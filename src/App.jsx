@@ -13,16 +13,15 @@ const DEFAULT_STATE = {
   issueDate: today,
   dueDate: due,
   fromCompany: 'Console Projects',
-  fromAddress: '123 Dev Street, Tech City\nBengaluru, IN - 560001',
+  fromAddress: '379, Thopramkudy Idukki\nKerala, IN - 685515',
   fromEmail: 'billing@consoleprojects.io',
-  fromPhone: '+91 98765 43210',
+  fromPhone: '+91 7510483455',
   toCompany: '',
   toAddress: '',
   toEmail: '',
   toPhone: '',
   currency: '₹',
-  taxRate: '18',
-  notes: 'Payment due within 30 days. Bank transfers preferred.\nAccount details will be shared separately.',
+  notes: 'Account Name: Edison Biju\nAccount Number: 41189296858\nIFSC Code : SBIN0064986\nBank Name: State Bank of India\nBranch Name: Thopramkudy',
   items: [
     { id: 1, desc: 'Web Development Service', qty: 1, rate: 50000 },
     { id: 2, desc: 'UI/UX Design Package', qty: 2, rate: 15000 },
@@ -69,7 +68,7 @@ export default function App() {
         backgroundColor: '#ffffff',
         logging: false,
       })
-      const imgData = canvas.toDataURL('image/png')
+      const imgData = canvas.toDataURL('image/jpeg', 1.0)
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       const pageW = pdf.internal.pageSize.getWidth()
       const pageH = pdf.internal.pageSize.getHeight()
@@ -77,9 +76,10 @@ export default function App() {
       let imgW = pageW - 16
       let imgH = imgW / ratio
       if (imgH > pageH - 16) { imgH = pageH - 16; imgW = imgH * ratio }
-      pdf.addImage(imgData, 'PNG', 8, 8, imgW, imgH)
+      pdf.addImage(imgData, 'JPEG', 8, 8, imgW, imgH)
       pdf.save(`ConsoleProjects_${state.invoiceNumber}.pdf`)
     } catch (e) {
+      console.error(e)
       alert('PDF generation error: ' + e.message)
     }
     setDownloading(false)

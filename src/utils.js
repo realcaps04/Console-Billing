@@ -12,9 +12,7 @@ export function fmtDate(dateStr) {
 }
 
 // Compute subtotal from items array
-export function computeTotals(items, taxRate) {
+export function computeTotals(items) {
   const subtotal = items.reduce((acc, it) => acc + (Number(it.qty) || 0) * (Number(it.rate) || 0), 0)
-  const tax = subtotal * (Number(taxRate) || 0) / 100
-  const total = subtotal + tax
-  return { subtotal, tax, total }
+  return { subtotal, total: subtotal }
 }

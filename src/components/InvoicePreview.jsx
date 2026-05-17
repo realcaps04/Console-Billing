@@ -8,37 +8,16 @@ const STATUS_LABELS = {
   draft: 'Draft',
 }
 
-const WaveTop = () => (
-  <div className="inv-wave-top">
-    <svg viewBox="0 0 1440 320" preserveAspectRatio="none">
-      <path fill="rgba(59, 130, 246, 0.08)" d="M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,165.3C960,149,1056,171,1152,186.7C1248,203,1344,213,1392,218.7L1440,224L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
-      <path fill="url(#wave-gradient)" d="M0,64L48,80C96,96,192,128,288,128C384,128,480,96,576,96C672,96,768,128,864,133.3C960,139,1056,117,1152,106.7C1248,96,1344,96,1392,96L1440,96L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
-      <defs>
-        <linearGradient id="wave-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="#6366f1" stopOpacity="0.8" />
-        </linearGradient>
-      </defs>
-    </svg>
-  </div>
-)
 
-const WaveBottom = () => (
-  <div className="inv-wave-bottom">
-    <svg viewBox="0 0 1440 320" preserveAspectRatio="none">
-      <path fill="url(#wave-bottom-gradient)" d="M0,224L60,213.3C120,203,240,181,360,181.3C480,181,600,203,720,213.3C840,224,960,224,1080,213.3C1200,203,1320,181,1380,170.7L1440,160L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z"></path>
-      <defs>
-        <linearGradient id="wave-bottom-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.3" />
-        </linearGradient>
-      </defs>
-    </svg>
-  </div>
-)
 
 const InvoicePreview = forwardRef(function InvoicePreview({ state, onDownload, downloading }, ref) {
-  const { subtotal, total } = computeTotals(state.items)
+  const isInitialEmpty = state.items.length === 1 && !state.items[0].desc && state.items[0].qty === 1 && !state.items[0].rate;
+  const displayItems = isInitialEmpty ? [
+    { id: 'p1', desc: 'Web Development Service', qty: 1, rate: 50000, isPlaceholder: true },
+    { id: 'p2', desc: 'UI/UX Design Package', qty: 2, rate: 15000, isPlaceholder: true },
+  ] : state.items;
+
+  const { subtotal, total } = computeTotals(displayItems)
   const cur = state.currency || '₹'
 
   const fromLines = [state.fromCompany, state.fromAddress, state.fromEmail, state.fromPhone].filter(Boolean)
@@ -69,8 +48,11 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state, onDownload, d
       {/* Invoice card */}
       <div className="preview-body">
         <div className="invoice-card" ref={ref}>
-          <WaveTop />
-          <WaveBottom />
+          {/* Accent header bar */}
+          <div className="inv-accent-bar">
+            <div className="inv-accent-logo">CP</div>
+            <div className="inv-accent-tagline">Console Projects</div>
+          </div>
 
           {/* Header */}
           <div className="inv-header">
@@ -79,7 +61,7 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state, onDownload, d
               <div className="inv-tagline">Precision Engineered Solutions</div>
             </div>
             <div className="inv-title-block">
-              <div className="inv-title-text">Invoice</div>
+              <div className="inv-title-text">INVOICE</div>
               <div className="inv-number-text"># {state.invoiceNumber || 'INV-001'}</div>
               <div>
                 <span className={`status-badge status-${state.status}`}>
@@ -108,12 +90,12 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state, onDownload, d
           {/* Dates */}
           <div className="inv-dates-grid">
             <div className="inv-date-card">
-              <div className="dlabel">Issue Date</div>
-              <div className="dvalue">{fmtDate(state.issueDate)}</div>
+              <div className="inv-date-card-label">Issue Date</div>
+              <div className="inv-date-card-value">{fmtDate(state.issueDate)}</div>
             </div>
             <div className="inv-date-card">
-              <div className="dlabel">Due Date</div>
-              <div className="dvalue">{fmtDate(state.dueDate)}</div>
+              <div className="inv-date-card-label">Due Date</div>
+              <div className="inv-date-card-value">{fmtDate(state.dueDate)}</div>
             </div>
           </div>
 
@@ -129,10 +111,10 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state, onDownload, d
               </tr>
             </thead>
             <tbody>
-              {state.items.map((item, idx) => {
+              {displayItems.map((item, idx) => {
                 const amount = (Number(item.qty) || 0) * (Number(item.rate) || 0)
                 return (
-                  <tr key={item.id}>
+                  <tr key={item.id} style={item.isPlaceholder ? { opacity: 0.4, fontStyle: 'italic' } : {}}>
                     <td>{idx + 1}</td>
                     <td>{item.desc || <span style={{ color: '#94a3b8' }}>—</span>}</td>
                     <td>{item.qty}</td>
@@ -159,18 +141,18 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state, onDownload, d
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="inv-footer">
-            {state.notes && (
-              <>
-                <div className="inv-notes-label">Notes & Payment Terms</div>
-                <div className="inv-notes-text">
-                  {state.notes.split('\n').map((l, i) => <span key={i}>{l}<br /></span>)}
-                </div>
-              </>
-            )}
-            <div className="inv-thank-you">✦ Thank you for your business ✦</div>
-          </div>
+          {/* Notes footer */}
+          {state.notes && (
+            <div className="inv-footer">
+              <div className="inv-notes-label">Notes &amp; Payment Terms</div>
+              <div className="inv-notes-text">
+                {state.notes.split('\n').map((l, i) => <span key={i}>{l}<br /></span>)}
+              </div>
+            </div>
+          )}
+
+          {/* Dark thank-you band - flush bottom */}
+          <div className="inv-thank-you">✦ Thank you for your business ✦</div>
         </div>
       </div>
     </section>

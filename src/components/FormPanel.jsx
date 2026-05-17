@@ -20,7 +20,7 @@ function LineItem({ item, onUpdate, onRemove }) {
       <input
         type="text"
         value={item.desc}
-        placeholder="Description"
+        placeholder="e.g. Web Development Service"
         onChange={e => onUpdate(item.id, 'desc', e.target.value)}
       />
       <input

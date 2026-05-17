@@ -23,8 +23,7 @@ const DEFAULT_STATE = {
   currency: '₹',
   notes: 'Account Name: Edison Biju\nAccount Number: 41189296858\nIFSC Code : SBIN0064986\nBank Name: State Bank of India\nBranch Name: Thopramkudy',
   items: [
-    { id: 1, desc: 'Web Development Service', qty: 1, rate: 50000 },
-    { id: 2, desc: 'UI/UX Design Package', qty: 2, rate: 15000 },
+    { id: 1, desc: '', qty: 1, rate: '' },
   ],
 }
 
@@ -47,7 +46,7 @@ export default function App() {
   const addItem = useCallback(() => {
     setState(prev => ({
       ...prev,
-      items: [...prev.items, { id: Date.now(), desc: '', qty: 1, rate: 0 }],
+      items: [...prev.items, { id: Date.now(), desc: '', qty: 1, rate: '' }],
     }))
   }, [])
 

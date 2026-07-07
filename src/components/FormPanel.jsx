@@ -1,4 +1,4 @@
-import { fmt, computeTotals } from '../utils'
+import { computeTotals } from '../utils'
 
 function SectionLabel({ children }) {
   return <div className="section-label">{children}</div>

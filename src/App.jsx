@@ -62,21 +62,38 @@ export default function App() {
     setDownloading(true)
     try {
       const canvas = await html2canvas(previewRef.current, {
-        scale: 2.5,
+        scale: 3,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
       })
-      const imgData = canvas.toDataURL('image/jpeg', 1.0)
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
+
       const pageW = pdf.internal.pageSize.getWidth()
       const pageH = pdf.internal.pageSize.getHeight()
-      const ratio = canvas.width / canvas.height
-      let imgW = pageW - 16
-      let imgH = imgW / ratio
-      if (imgH > pageH - 16) { imgH = pageH - 16; imgW = imgH * ratio }
-      pdf.addImage(imgData, 'JPEG', 8, 8, imgW, imgH)
-      pdf.save(`ConsoleProjects_${state.invoiceNumber}.pdf`)
+      const margin = 8
+
+      // Render the canvas at a fixed width; add pages if height overflows.
+      const imgW = pageW - margin * 2
+      const imgH = (canvas.height * imgW) / canvas.width
+
+      let y = margin
+      let remainingH = imgH
+
+      pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH, undefined, 'FAST')
+      remainingH -= (pageH - margin * 2)
+
+      // If the content is taller than one page, shift the same image up on subsequent pages.
+      while (remainingH > 0) {
+        pdf.addPage()
+        y = margin - (imgH - remainingH)
+        pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH, undefined, 'FAST')
+        remainingH -= (pageH - margin * 2)
+      }
+
+      const safeInvoice = (state.invoiceNumber || 'INV').replace(/[^\w-]+/g, '_')
+      pdf.save(`ConsoleProjects_${safeInvoice}.pdf`)
     } catch (e) {
       console.error(e)
       alert('PDF generation error: ' + e.message)

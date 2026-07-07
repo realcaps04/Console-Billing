@@ -22,6 +22,7 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state, onDownload, d
 
   const fromLines = [state.fromCompany, state.fromAddress, state.fromEmail, state.fromPhone].filter(Boolean)
   const toLines = [state.toCompany, state.toAddress, state.toEmail, state.toPhone].filter(Boolean)
+  const notesLines = (state.notes || '').split('\n').map(s => s.trim()).filter(Boolean)
 
   return (
     <section className="preview-panel">
@@ -141,12 +142,38 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state, onDownload, d
             </div>
           </div>
 
-          {/* Notes footer */}
-          {state.notes && (
-            <div className="inv-footer">
-              <div className="inv-notes-label">Notes &amp; Payment Terms</div>
-              <div className="inv-notes-text">
-                {state.notes.split('\n').map((l, i) => <span key={i}>{l}<br /></span>)}
+          {/* Notes + Payment / Terms */}
+          {(notesLines.length > 0) && (
+            <div className="inv-bottom">
+              <div className="inv-bottom-left">
+                <div className="inv-notes-label">Notes &amp; Payment Details</div>
+                <div className="inv-notes-text">
+                  {notesLines.map((l, i) => <span key={i}>{l}<br /></span>)}
+                </div>
+              </div>
+              <div className="inv-bottom-right">
+                <div className="inv-summary-card">
+                  <div className="inv-summary-label">Amount Due</div>
+                  <div className="inv-summary-amount">{fmt(total, cur)}</div>
+                  <div className="inv-summary-meta">
+                    <div className="inv-summary-meta-row">
+                      <span>Invoice #</span>
+                      <span>{state.invoiceNumber || 'INV-001'}</span>
+                    </div>
+                    <div className="inv-summary-meta-row">
+                      <span>Due</span>
+                      <span>{fmtDate(state.dueDate)}</span>
+                    </div>
+                    <div className="inv-summary-meta-row">
+                      <span>Status</span>
+                      <span>{STATUS_LABELS[state.status] || 'Unpaid'}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="inv-sign">
+                  <div className="inv-sign-line" />
+                  <div className="inv-sign-text">Authorized Signature</div>
+                </div>
               </div>
             </div>
           )}

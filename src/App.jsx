@@ -3,25 +3,29 @@ import FormPanel from './components/FormPanel'
 import InvoicePreview from './components/InvoicePreview'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
+import { sanitizeInvoiceNumber } from './utils'
 
 const today = new Date().toISOString().split('T')[0]
-const due = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]
+const due = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
 
 const DEFAULT_STATE = {
-  invoiceNumber: 'INV-001',
+  invoiceNumber: 'INV-A01',
   status: 'unpaid',
   issueDate: today,
   dueDate: due,
   fromCompany: 'Console Projects',
-  fromAddress: '379, Thopramkudy Idukki\nKerala, IN - 685515',
+  fromAddress: '3658, Cochin\nKerala, IN - 682001',
   fromEmail: 'billing@consoleprojects.io',
-  fromPhone: '+91 7510483455',
+  fromPhone: '+91 7907951080',
   toCompany: '',
   toAddress: '',
   toEmail: '',
   toPhone: '',
   currency: '₹',
-  notes: 'Account Name: Edison Biju\nAccount Number: 41189296858\nIFSC Code : SBIN0064986\nBank Name: State Bank of India\nBranch Name: Thopramkudy',
+  amountPaid: 0,
+  discountType: 'amount',
+  discountValue: 0,
+  notes: 'Account Name: Console Projects\nAccount Number: 44043031894\nIFSC Code : SBIN0070698\nBank Name: State Bank of India\nBranch Name: Kattappana',
   items: [
     { id: 1, desc: '', qty: 1, rate: '' },
   ],
@@ -92,7 +96,7 @@ export default function App() {
         remainingH -= (pageH - margin * 2)
       }
 
-      const safeInvoice = (state.invoiceNumber || 'INV').replace(/[^\w-]+/g, '_')
+      const safeInvoice = sanitizeInvoiceNumber(state.invoiceNumber) || `INV-${Date.now().toString(36).toUpperCase()}`
       pdf.save(`ConsoleProjects_${safeInvoice}.pdf`)
     } catch (e) {
       console.error(e)

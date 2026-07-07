@@ -1,4 +1,4 @@
-import { computeTotals } from '../utils'
+import { computeTotalsWithDiscount, sanitizeInvoiceNumber } from '../utils'
 
 function SectionLabel({ children }) {
   return <div className="section-label">{children}</div>
@@ -11,6 +11,13 @@ function FormGroup({ label, children, full }) {
       {children}
     </div>
   )
+}
+
+function addDays(dateStr, days) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
 }
 
 function LineItem({ item, onUpdate, onRemove }) {
@@ -42,7 +49,9 @@ function LineItem({ item, onUpdate, onRemove }) {
 }
 
 export default function FormPanel({ state, update, updateItem, addItem, removeItem, downloading, onDownload }) {
-  const { subtotal, total } = computeTotals(state.items)
+  const { subtotal, discount, total } = computeTotalsWithDiscount(state.items, state.discountType, state.discountValue)
+  const paid = Number(state.amountPaid) || 0
+  const balance = Math.max(0, total - paid)
 
   return (
     <aside className="sidebar">
@@ -63,7 +72,12 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
           <SectionLabel>Invoice Details</SectionLabel>
           <div className="form-grid">
             <FormGroup label="Invoice Number">
-              <input type="text" value={state.invoiceNumber} onChange={e => update('invoiceNumber', e.target.value)} />
+              <input
+                type="text"
+                value={state.invoiceNumber}
+                onChange={e => update('invoiceNumber', sanitizeInvoiceNumber(e.target.value))}
+                placeholder="INV-001"
+              />
             </FormGroup>
             <FormGroup label="Status">
               <select value={state.status} onChange={e => update('status', e.target.value)}>
@@ -74,7 +88,15 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
               </select>
             </FormGroup>
             <FormGroup label="Issue Date">
-              <input type="date" value={state.issueDate} onChange={e => update('issueDate', e.target.value)} />
+              <input
+                type="date"
+                value={state.issueDate}
+                onChange={e => {
+                  const nextIssue = e.target.value
+                  update('issueDate', nextIssue)
+                  update('dueDate', addDays(nextIssue, 7))
+                }}
+              />
             </FormGroup>
             <FormGroup label="Due Date">
               <input type="date" value={state.dueDate} onChange={e => update('dueDate', e.target.value)} />
@@ -145,6 +167,28 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
             <FormGroup label="Currency Symbol">
               <input type="text" value={state.currency} onChange={e => update('currency', e.target.value)} />
             </FormGroup>
+            <FormGroup label="Already Paid Amount">
+              <input
+                type="number"
+                min="0"
+                value={state.amountPaid}
+                onChange={e => update('amountPaid', e.target.value)}
+              />
+            </FormGroup>
+            <FormGroup label="Discount Type">
+              <select value={state.discountType} onChange={e => update('discountType', e.target.value)}>
+                <option value="amount">Amount</option>
+                <option value="percent">Percent (%)</option>
+              </select>
+            </FormGroup>
+            <FormGroup label="Discount Value">
+              <input
+                type="number"
+                min="0"
+                value={state.discountValue}
+                onChange={e => update('discountValue', e.target.value)}
+              />
+            </FormGroup>
             <FormGroup label="Notes / Payment Terms" full>
               <textarea rows={3} value={state.notes} placeholder="Payment terms, bank info..." onChange={e => update('notes', e.target.value)} />
             </FormGroup>
@@ -164,9 +208,21 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
             <span>Subtotal</span>
             <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{state.currency} {subtotal.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text2)', marginBottom: '0.4rem' }}>
+            <span>Discount</span>
+            <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{state.currency} {discount.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text)', borderTop: '1px solid var(--border)', paddingTop: '0.5rem', fontWeight: 700 }}>
             <span>Total</span>
             <span style={{ fontFamily: 'JetBrains Mono', color: 'var(--success)' }}>{state.currency} {total.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text2)', marginTop: '0.5rem' }}>
+            <span>Paid</span>
+            <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{state.currency} {paid.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text)', borderTop: '1px solid var(--border)', paddingTop: '0.5rem', marginTop: '0.5rem', fontWeight: 800 }}>
+            <span>Balance Due</span>
+            <span style={{ fontFamily: 'JetBrains Mono', color: 'var(--gold)' }}>{state.currency} {balance.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
           </div>
         </div>
       </div>

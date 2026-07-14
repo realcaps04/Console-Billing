@@ -189,8 +189,38 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
                 onChange={e => update('discountValue', e.target.value)}
               />
             </FormGroup>
-            <FormGroup label="Notes / Payment Terms" full>
-              <textarea rows={3} value={state.notes} placeholder="Payment terms, bank info..." onChange={e => update('notes', e.target.value)} />
+            <FormGroup label="Payment Mode">
+              <input
+                type="text"
+                value={state.paymentMode}
+                onChange={e => update('paymentMode', e.target.value)}
+                placeholder="Bank Transfer"
+              />
+            </FormGroup>
+            <FormGroup label="UPI ID" full>
+              <input
+                type="text"
+                value={state.upiId}
+                onChange={e => update('upiId', e.target.value.trim().toLowerCase())}
+                placeholder="name@bank"
+              />
+            </FormGroup>
+            <FormGroup label="UPI Payee Name" full>
+              <input
+                type="text"
+                value={state.upiPayeeName}
+                onChange={e => update('upiPayeeName', e.target.value)}
+                placeholder="Name registered with UPI/bank"
+              />
+            </FormGroup>
+            <FormGroup label="Bank Details" full>
+              <textarea rows={4} value={state.bankDetails} placeholder="Account name, number, IFSC..." onChange={e => update('bankDetails', e.target.value)} />
+            </FormGroup>
+            <FormGroup label="Notes" full>
+              <textarea rows={2} value={state.extraNotes} placeholder="Thank you for your business." onChange={e => update('extraNotes', e.target.value)} />
+            </FormGroup>
+            <FormGroup label="Terms & Conditions" full>
+              <textarea rows={3} value={state.terms} placeholder="Payment terms..." onChange={e => update('terms', e.target.value)} />
             </FormGroup>
           </div>
         </div>

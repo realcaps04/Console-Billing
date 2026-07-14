@@ -3,19 +3,19 @@ import FormPanel from './components/FormPanel'
 import InvoicePreview from './components/InvoicePreview'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
-import { sanitizeInvoiceNumber } from './utils'
+import { sanitizeInvoiceNumber, generateInvoiceNumber } from './utils'
 
 const today = new Date().toISOString().split('T')[0]
 const due = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
 
 const DEFAULT_STATE = {
-  invoiceNumber: 'INV-A01',
+  invoiceNumber: generateInvoiceNumber(today),
   status: 'unpaid',
   issueDate: today,
   dueDate: due,
   fromCompany: 'Console Projects',
   fromAddress: '3658, Cochin\nKerala, IN - 682001',
-  fromEmail: 'billing@consoleprojects.io',
+  fromEmail: 'consoleprojectsonline@gmail.com',
   fromPhone: '+91 7907951080',
   toCompany: '',
   toAddress: '',
@@ -25,7 +25,12 @@ const DEFAULT_STATE = {
   amountPaid: 0,
   discountType: 'amount',
   discountValue: 0,
-  notes: 'Account Name: Console Projects\nAccount Number: 44043031894\nIFSC Code : SBIN0070698\nBank Name: State Bank of India\nBranch Name: Kattappana',
+  paymentMode: 'Bank Transfer',
+  upiId: 'shigybiju9562-1@oksbi',
+  upiPayeeName: 'Shyji Biju',
+  bankDetails: 'Account Holder Name: Shyji Biju\nAccount Number: 44078284542\nIFSC Code: SBIN0070698\nBank Name: State Bank of India',
+  extraNotes: 'Thank you for your business.',
+  terms: 'Payment is due within 7 days of the invoice date.\nAll amounts are payable in Indian Rupees.\nThis is a non-GST service invoice.',
   items: [
     { id: 1, desc: '', qty: 1, rate: '' },
   ],
@@ -96,7 +101,7 @@ export default function App() {
         remainingH -= (pageH - margin * 2)
       }
 
-      const safeInvoice = sanitizeInvoiceNumber(state.invoiceNumber) || `INV-${Date.now().toString(36).toUpperCase()}`
+      const safeInvoice = sanitizeInvoiceNumber(state.invoiceNumber) || generateInvoiceNumber(state.issueDate)
       pdf.save(`ConsoleProjects_${safeInvoice}.pdf`)
     } catch (e) {
       console.error(e)

@@ -1,14 +1,22 @@
-import { computeTotalsWithDiscount, sanitizeInvoiceNumber, generateInvoiceNumber } from '../utils'
+import {
+  computeTotalsWithDiscount,
+  sanitizeInvoiceNumber,
+  generateInvoiceNumber,
+  formatIndianPhone,
+  getContactValidationErrors,
+  hasContactValidationErrors,
+} from '../utils'
 
 function SectionLabel({ children }) {
   return <div className="section-label">{children}</div>
 }
 
-function FormGroup({ label, children, full }) {
+function FormGroup({ label, children, full, error }) {
   return (
-    <div className={`form-group${full ? ' full' : ''}`}>
+    <div className={`form-group${full ? ' full' : ''}${error ? ' has-error' : ''}`}>
       <label>{label}</label>
       {children}
+      {error ? <span className="field-error">{error}</span> : null}
     </div>
   )
 }
@@ -48,10 +56,12 @@ function LineItem({ item, onUpdate, onRemove }) {
   )
 }
 
-export default function FormPanel({ state, update, updateItem, addItem, removeItem }) {
+export default function FormPanel({ state, update, updateItem, addItem, removeItem, saving, onSave }) {
   const { subtotal, discount, total } = computeTotalsWithDiscount(state.items, state.discountType, state.discountValue)
   const paid = Number(state.amountPaid) || 0
   const balance = Math.max(0, total - paid)
+  const errors = getContactValidationErrors(state)
+  const canSave = !hasContactValidationErrors(state)
 
   return (
     <aside className="sidebar">
@@ -111,11 +121,25 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
             <FormGroup label="Address" full>
               <textarea rows={2} value={state.fromAddress} onChange={e => update('fromAddress', e.target.value)} />
             </FormGroup>
-            <FormGroup label="Email">
-              <input type="email" value={state.fromEmail} onChange={e => update('fromEmail', e.target.value)} />
+            <FormGroup label="Email" error={errors.fromEmail}>
+              <input
+                type="email"
+                value={state.fromEmail}
+                onChange={e => update('fromEmail', e.target.value)}
+                onBlur={e => update('fromEmail', e.target.value.trim())}
+                placeholder="you@company.com"
+                autoComplete="email"
+              />
             </FormGroup>
-            <FormGroup label="Phone">
-              <input type="tel" value={state.fromPhone} onChange={e => update('fromPhone', e.target.value)} />
+            <FormGroup label="Phone" error={errors.fromPhone}>
+              <input
+                type="tel"
+                value={state.fromPhone}
+                onChange={e => update('fromPhone', formatIndianPhone(e.target.value))}
+                placeholder="+91 9XXXX XXXXX"
+                inputMode="numeric"
+                autoComplete="tel"
+              />
             </FormGroup>
           </div>
         </div>
@@ -124,17 +148,38 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
         <div className="form-section">
           <SectionLabel>Bill To (Client)</SectionLabel>
           <div className="form-grid">
-            <FormGroup label="Client / Company Name" full>
-              <input type="text" value={state.toCompany} placeholder="Client Company Ltd." onChange={e => update('toCompany', e.target.value)} />
+            <FormGroup label="Client / Company Name" full error={errors.toCompany}>
+              <input
+                type="text"
+                value={state.toCompany}
+                placeholder="Client Company Ltd."
+                onChange={e => update('toCompany', e.target.value)}
+                onBlur={e => update('toCompany', e.target.value.trim())}
+                required
+              />
             </FormGroup>
             <FormGroup label="Address" full>
               <textarea rows={2} value={state.toAddress} placeholder="Client address..." onChange={e => update('toAddress', e.target.value)} />
             </FormGroup>
-            <FormGroup label="Email">
-              <input type="email" value={state.toEmail} placeholder="client@email.com" onChange={e => update('toEmail', e.target.value)} />
+            <FormGroup label="Email" error={errors.toEmail}>
+              <input
+                type="email"
+                value={state.toEmail}
+                placeholder="client@email.com"
+                onChange={e => update('toEmail', e.target.value)}
+                onBlur={e => update('toEmail', e.target.value.trim())}
+                autoComplete="email"
+              />
             </FormGroup>
-            <FormGroup label="Phone">
-              <input type="tel" value={state.toPhone} placeholder="+91 00000 00000" onChange={e => update('toPhone', e.target.value)} />
+            <FormGroup label="Phone" error={errors.toPhone}>
+              <input
+                type="tel"
+                value={state.toPhone}
+                placeholder="+91 9XXXX XXXXX"
+                onChange={e => update('toPhone', formatIndianPhone(e.target.value))}
+                inputMode="numeric"
+                autoComplete="tel"
+              />
             </FormGroup>
           </div>
         </div>
@@ -252,6 +297,21 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
             <span style={{ fontFamily: 'JetBrains Mono', color: 'var(--gold)' }}>{state.currency} {balance.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
           </div>
         </div>
+      </div>
+
+      <div className="sidebar-footer">
+        <button
+          type="button"
+          className="btn-save-invoice"
+          onClick={onSave}
+          disabled={saving || !canSave}
+          title={!canSave ? 'Fix required fields before saving' : undefined}
+        >
+          {saving ? 'Saving…' : 'Save Invoice'}
+        </button>
+        {!canSave && (
+          <p className="save-hint">Fix required field errors before saving.</p>
+        )}
       </div>
     </aside>
   )

@@ -1,55 +1,87 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import AppNav from './components/AppNav'
+import AppModal from './components/AppModal'
+import DeleteConfirmModal from './components/DeleteConfirmModal'
 import FormPanel from './components/FormPanel'
 import InvoicePreview from './components/InvoicePreview'
 import PreviousBills from './components/PreviousBills'
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
-import { sanitizeInvoiceNumber, generateInvoiceNumber } from './utils'
-import { fetchInvoices, saveInvoice } from './lib/invoices'
+import { hasContactValidationErrors, generateInvoiceNumber, computeTotalsWithDiscount } from './utils'
+import { fetchInvoices, saveInvoice, deleteInvoice } from './lib/invoices'
+import { downloadInvoicePdf } from './lib/pdf'
+
+const VIEW_STORAGE_KEY = 'consolebilling_active_view'
+
+function getInitialView() {
+  const hash = window.location.hash.replace('#', '')
+  if (hash === 'create' || hash === 'bills') return hash
+  try {
+    const stored = sessionStorage.getItem(VIEW_STORAGE_KEY)
+    if (stored === 'create' || stored === 'bills') return stored
+  } catch {
+    // ignore
+  }
+  return 'create'
+}
+
+function persistView(nextView) {
+  try {
+    sessionStorage.setItem(VIEW_STORAGE_KEY, nextView)
+  } catch {
+    // ignore
+  }
+  const nextHash = `#${nextView}`
+  if (window.location.hash !== nextHash) {
+    window.history.replaceState(null, '', nextHash)
+  }
+}
 
 const today = new Date().toISOString().split('T')[0]
 const due = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
 
-const DEFAULT_STATE = {
-  invoiceNumber: generateInvoiceNumber(today),
-  status: 'unpaid',
-  issueDate: today,
-  dueDate: due,
-  fromCompany: 'Console Projects',
-  fromAddress: '3658, Cochin\nKerala, IN - 682001',
-  fromEmail: 'consoleprojectsonline@gmail.com',
-  fromPhone: '+91 7907951080',
-  toCompany: '',
-  toAddress: '',
-  toEmail: '',
-  toPhone: '',
-  currency: '₹',
-  amountPaid: 0,
-  discountType: 'amount',
-  discountValue: 0,
-  paymentMode: 'Bank Transfer',
-  upiId: 'shigybiju9562-1@oksbi',
-  upiPayeeName: 'Shyji Biju',
-  bankDetails: 'Account Holder Name: Shyji Biju\nAccount Number: 44078284542\nIFSC Code: SBIN0070698\nBank Name: State Bank of India',
-  extraNotes: 'Thank you for your business.',
-  terms: 'Payment is due within 7 days of the invoice date.\nAll amounts are payable in Indian Rupees.\nThis is a non-GST service invoice.',
-  items: [
-    { id: 1, desc: '', qty: 1, rate: '' },
-  ],
+function createDefaultState() {
+  const issueDate = new Date().toISOString().split('T')[0]
+  const dueDate = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+  return {
+    invoiceNumber: generateInvoiceNumber(issueDate),
+    status: 'unpaid',
+    issueDate,
+    dueDate,
+    fromCompany: 'Console Projects',
+    fromAddress: '3658, Cochin\nKerala, IN - 682001',
+    fromEmail: 'consoleprojectsonline@gmail.com',
+    fromPhone: '+91 7907951080',
+    toCompany: '',
+    toAddress: '',
+    toEmail: '',
+    toPhone: '',
+    currency: '₹',
+    amountPaid: 0,
+    discountType: 'amount',
+    discountValue: 0,
+    paymentMode: 'Bank Transfer',
+    upiId: 'shigybiju9562-1@oksbi',
+    upiPayeeName: 'Shyji Biju',
+    bankDetails: 'Account Holder Name: Shyji Biju\nAccount Number: 44078284542\nIFSC Code: SBIN0070698\nBank Name: State Bank of India',
+    extraNotes: 'Thank you for your business.',
+    terms: 'Payment is due within 7 days of the invoice date.\nAll amounts are payable in Indian Rupees.\nThis is a non-GST service invoice.',
+    items: [
+      { id: Date.now(), desc: '', qty: 1, rate: '' },
+    ],
+  }
 }
 
 function billToState(bill) {
+  const defaults = createDefaultState()
   return {
-    ...DEFAULT_STATE,
-    invoiceNumber: bill.invoiceNumber || DEFAULT_STATE.invoiceNumber,
+    ...defaults,
+    invoiceNumber: bill.invoiceNumber || defaults.invoiceNumber,
     status: bill.status || 'unpaid',
     issueDate: bill.issueDate || today,
     dueDate: bill.dueDate || due,
-    fromCompany: bill.fromCompany ?? DEFAULT_STATE.fromCompany,
-    fromAddress: bill.fromAddress ?? DEFAULT_STATE.fromAddress,
-    fromEmail: bill.fromEmail ?? DEFAULT_STATE.fromEmail,
-    fromPhone: bill.fromPhone ?? DEFAULT_STATE.fromPhone,
+    fromCompany: bill.fromCompany ?? defaults.fromCompany,
+    fromAddress: bill.fromAddress ?? defaults.fromAddress,
+    fromEmail: bill.fromEmail ?? defaults.fromEmail,
+    fromPhone: bill.fromPhone ?? defaults.fromPhone,
     toCompany: bill.toCompany || '',
     toAddress: bill.toAddress || '',
     toEmail: bill.toEmail || '',
@@ -58,12 +90,12 @@ function billToState(bill) {
     amountPaid: bill.amountPaid ?? 0,
     discountType: bill.discountType || 'amount',
     discountValue: bill.discountValue ?? 0,
-    paymentMode: bill.paymentMode || DEFAULT_STATE.paymentMode,
-    upiId: bill.upiId || DEFAULT_STATE.upiId,
-    upiPayeeName: bill.upiPayeeName || DEFAULT_STATE.upiPayeeName,
-    bankDetails: bill.bankDetails || DEFAULT_STATE.bankDetails,
-    extraNotes: bill.extraNotes || DEFAULT_STATE.extraNotes,
-    terms: bill.terms || DEFAULT_STATE.terms,
+    paymentMode: bill.paymentMode || defaults.paymentMode,
+    upiId: bill.upiId || defaults.upiId,
+    upiPayeeName: bill.upiPayeeName || defaults.upiPayeeName,
+    bankDetails: bill.bankDetails || defaults.bankDetails,
+    extraNotes: bill.extraNotes || defaults.extraNotes,
+    terms: bill.terms || defaults.terms,
     items: Array.isArray(bill.items) && bill.items.length > 0
       ? bill.items.map((it, i) => ({
           id: it.id || Date.now() + i,
@@ -75,20 +107,60 @@ function billToState(bill) {
   }
 }
 
+function buildPaidBillState(bill) {
+  const state = billToState(bill)
+  const { total } = computeTotalsWithDiscount(state.items, state.discountType, state.discountValue)
+  const invoiceTotal = Number(bill.total) || total
+  return {
+    ...state,
+    status: 'paid',
+    amountPaid: invoiceTotal,
+  }
+}
+
 export default function App() {
-  const [view, setView] = useState('create')
-  const [state, setState] = useState(DEFAULT_STATE)
+  const [view, setView] = useState(() => {
+    const initial = getInitialView()
+    persistView(initial)
+    return initial
+  })
+  const [state, setState] = useState(createDefaultState)
   const [downloading, setDownloading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [previousBills, setPreviousBills] = useState([])
   const [billsLoading, setBillsLoading] = useState(false)
   const [billsError, setBillsError] = useState(null)
+  const [saveModal, setSaveModal] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteConfirming, setDeleteConfirming] = useState(false)
+  const [busyBillId, setBusyBillId] = useState(null)
+  const [exportState, setExportState] = useState(null)
   const previewRef = useRef(null)
+  const exportPreviewRef = useRef(null)
+  const exportWaitersRef = useRef([])
+
+  useEffect(() => {
+    if (!exportState) return undefined
+    const id = window.setTimeout(async () => {
+      const waiters = exportWaitersRef.current
+      exportWaitersRef.current = []
+      try {
+        await downloadInvoicePdf(exportPreviewRef.current, exportState)
+        waiters.forEach(({ resolve }) => resolve())
+      } catch (e) {
+        waiters.forEach(({ reject }) => reject(e))
+      } finally {
+        setExportState(null)
+      }
+    }, 450)
+    return () => window.clearTimeout(id)
+  }, [exportState])
 
   const loadBills = useCallback(async () => {
     setBillsLoading(true)
     setBillsError(null)
     try {
-      const bills = await fetchInvoices()
+      const bills = await fetchInvoices({ limit: 10 })
       setPreviousBills(bills)
     } catch (e) {
       console.error(e)
@@ -106,6 +178,7 @@ export default function App() {
 
   const navigate = useCallback((nextView) => {
     setView(nextView)
+    persistView(nextView)
     if (nextView === 'bills') loadBills()
   }, [loadBills])
 
@@ -134,58 +207,127 @@ export default function App() {
     }))
   }, [])
 
+  const startNewInvoice = useCallback(() => {
+    setState(createDefaultState())
+    navigate('create')
+  }, [navigate])
+
   const openBill = useCallback((bill) => {
     setState(billToState(bill))
-    setView('create')
+    navigate('create')
+  }, [navigate])
+
+  const requestDeleteBill = useCallback((bill) => {
+    setDeleteTarget(bill)
   }, [])
+
+  const confirmDeleteBill = useCallback(async () => {
+    if (!deleteTarget) return
+    const bill = deleteTarget
+    const rowId = bill.id || bill.invoiceNumber
+    setDeleteConfirming(true)
+    setBusyBillId(rowId)
+    try {
+      await deleteInvoice(bill)
+      setDeleteTarget(null)
+      // Reload from Supabase so the UI matches the database
+      await loadBills()
+    } catch (e) {
+      console.error(e)
+      const msg = e?.message || 'Failed to delete invoice'
+      if (
+        String(msg).toLowerCase().includes('permission') ||
+        String(msg).toLowerCase().includes('delete policy') ||
+        e?.code === '42501'
+      ) {
+        alert(
+          'Delete failed in Supabase. Run supabase/invoices.sql in the Supabase SQL Editor (includes the delete policy), then try again.',
+        )
+      } else {
+        alert(`Delete failed: ${msg}`)
+      }
+    } finally {
+      setDeleteConfirming(false)
+      setBusyBillId(null)
+    }
+  }, [deleteTarget, loadBills])
+
+  const downloadBillPdf = useCallback(async (bill) => {
+    const rowId = bill.id || bill.invoiceNumber
+    setBusyBillId(rowId)
+    try {
+      await new Promise((resolve, reject) => {
+        exportWaitersRef.current.push({ resolve, reject })
+        setExportState(billToState(bill))
+      })
+    } catch (e) {
+      console.error(e)
+      alert('PDF generation error: ' + (e?.message || e))
+    } finally {
+      setBusyBillId(null)
+    }
+  }, [])
+
+  const markPaidAndDownload = useCallback(async (bill) => {
+    const rowId = bill.id || bill.invoiceNumber
+    const isPaid = (bill.status || 'unpaid') === 'paid'
+    setBusyBillId(rowId)
+    try {
+      const paidState = buildPaidBillState(bill)
+      if (!isPaid) {
+        const saved = await saveInvoice(paidState)
+        setPreviousBills((prev) =>
+          prev.map((b) => ((b.id || b.invoiceNumber) === rowId ? saved : b)),
+        )
+      }
+      await new Promise((resolve, reject) => {
+        exportWaitersRef.current.push({ resolve, reject })
+        setExportState(paidState)
+      })
+    } catch (e) {
+      console.error(e)
+      const msg = e?.message || 'Failed to mark invoice as paid'
+      if (String(msg).includes('Supabase is not configured')) {
+        alert(msg)
+      } else {
+        alert(`Paid PDF failed: ${msg}`)
+      }
+    } finally {
+      setBusyBillId(null)
+    }
+  }, [])
+
+  const saveToSupabase = async () => {
+    if (hasContactValidationErrors(state)) {
+      alert('Please fix email and phone validation errors before saving.')
+      return
+    }
+    setSaving(true)
+    try {
+      await saveInvoice(state)
+      setState(createDefaultState())
+      setSaveModal({
+        title: 'Saved',
+        message: 'Invoice saved to Supabase.',
+      })
+    } catch (e) {
+      console.error(e)
+      const msg = e?.message || 'Failed to save invoice'
+      if (String(msg).includes('Could not find the table') || e?.code === 'PGRST205') {
+        alert('Save failed: create the invoices table first (run supabase/invoices.sql in Supabase SQL Editor).')
+      } else {
+        alert(`Save failed: ${msg}`)
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const downloadPDF = async () => {
     if (!previewRef.current) return
     setDownloading(true)
     try {
-      try {
-        await saveInvoice(state)
-      } catch (saveErr) {
-        console.error(saveErr)
-        const msg = saveErr?.message || 'Failed to save invoice'
-        if (String(msg).includes('Could not find the table') || saveErr?.code === 'PGRST205') {
-          alert('PDF will download, but Supabase save failed: create the invoices table first (see supabase/invoices.sql).')
-        } else {
-          alert(`PDF will download, but saving failed: ${msg}`)
-        }
-      }
-
-      const canvas = await html2canvas(previewRef.current, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-      })
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
-
-      const pageW = pdf.internal.pageSize.getWidth()
-      const pageH = pdf.internal.pageSize.getHeight()
-      const margin = 8
-
-      const imgW = pageW - margin * 2
-      const imgH = (canvas.height * imgW) / canvas.width
-
-      let y = margin
-      let remainingH = imgH
-
-      pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH, undefined, 'FAST')
-      remainingH -= (pageH - margin * 2)
-
-      while (remainingH > 0) {
-        pdf.addPage()
-        y = margin - (imgH - remainingH)
-        pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH, undefined, 'FAST')
-        remainingH -= (pageH - margin * 2)
-      }
-
-      const safeInvoice = sanitizeInvoiceNumber(state.invoiceNumber) || generateInvoiceNumber(state.issueDate)
-      pdf.save(`ConsoleProjects_${safeInvoice}.pdf`)
+      await downloadInvoicePdf(previewRef.current, state)
     } catch (e) {
       console.error(e)
       alert('PDF generation error: ' + e.message)
@@ -197,7 +339,10 @@ export default function App() {
     <div className="app-shell">
       <AppNav
         activeView={view}
-        onNavigate={navigate}
+        onNavigate={(nextView) => {
+          if (nextView === 'create') startNewInvoice()
+          else navigate(nextView)
+        }}
         downloading={downloading}
         onDownload={downloadPDF}
       />
@@ -210,6 +355,8 @@ export default function App() {
             updateItem={updateItem}
             addItem={addItem}
             removeItem={removeItem}
+            saving={saving}
+            onSave={saveToSupabase}
           />
           <InvoicePreview ref={previewRef} state={state} />
         </div>
@@ -218,11 +365,41 @@ export default function App() {
           bills={previousBills}
           loading={billsLoading}
           error={billsError}
-          onNewInvoice={() => setView('create')}
+          onNewInvoice={startNewInvoice}
           onRefresh={loadBills}
-          onOpenBill={openBill}
+          onEditBill={openBill}
+          onDeleteBill={requestDeleteBill}
+          onDownloadBill={downloadBillPdf}
+          onMarkPaidPdf={markPaidAndDownload}
+          busyBillId={busyBillId}
+          autoLoad
         />
       )}
+
+      {exportState && (
+        <div className="pdf-export-offscreen" aria-hidden="true">
+          <InvoicePreview ref={exportPreviewRef} state={exportState} />
+        </div>
+      )}
+
+      <AppModal
+        open={Boolean(saveModal)}
+        title={saveModal?.title}
+        message={saveModal?.message}
+        onClose={() => setSaveModal(null)}
+      />
+
+      <DeleteConfirmModal
+        key={deleteTarget?.id || deleteTarget?.invoiceNumber || 'delete'}
+        open={Boolean(deleteTarget)}
+        invoiceLabel={deleteTarget?.invoiceNumber}
+        confirming={deleteConfirming}
+        onCancel={() => {
+          if (deleteConfirming) return
+          setDeleteTarget(null)
+        }}
+        onConfirm={confirmDeleteBill}
+      />
     </div>
   )
 }

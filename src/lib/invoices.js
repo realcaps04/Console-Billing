@@ -84,12 +84,13 @@ function mapStateToRow(state) {
   }
 }
 
-export async function fetchInvoices() {
+export async function fetchInvoices({ limit = 10 } = {}) {
   const client = requireSupabase()
   const { data, error } = await client
     .from('invoices')
     .select('*')
     .order('created_at', { ascending: false })
+    .limit(limit)
 
   if (error) throw error
   return (data || []).map(mapRowToBill)
@@ -106,4 +107,46 @@ export async function saveInvoice(state) {
 
   if (error) throw error
   return mapRowToBill(data)
+}
+
+export async function deleteInvoice(bill) {
+  const client = requireSupabase()
+  const id = bill?.id
+  const invoiceNumber = bill?.invoiceNumber
+
+  if (!id && !invoiceNumber) {
+    throw new Error('Missing invoice id.')
+  }
+
+  // Prefer uuid id; fall back to invoice_number. .select() verifies a row was removed
+  // (Supabase/RLS can return no error while deleting 0 rows if delete policy is missing).
+  let query = client.from('invoices').delete().select('id, invoice_number')
+  if (id) {
+    query = query.eq('id', id)
+  } else {
+    query = query.eq('invoice_number', invoiceNumber)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+
+  if (!data || data.length === 0) {
+    // Retry by invoice number if id-based delete matched nothing
+    if (id && invoiceNumber) {
+      const { data: byNumber, error: byNumberError } = await client
+        .from('invoices')
+        .delete()
+        .eq('invoice_number', invoiceNumber)
+        .select('id, invoice_number')
+
+      if (byNumberError) throw byNumberError
+      if (byNumber && byNumber.length > 0) return byNumber[0]
+    }
+
+    throw new Error(
+      'Invoice was not deleted in Supabase. Run the delete policy in supabase/invoices.sql (SQL Editor), then try again.',
+    )
+  }
+
+  return data[0]
 }

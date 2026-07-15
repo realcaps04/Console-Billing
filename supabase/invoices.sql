@@ -57,3 +57,12 @@ create policy "Allow anon update invoices"
   to anon, authenticated
   using (true)
   with check (true);
+
+drop policy if exists "Allow anon delete invoices" on public.invoices;
+create policy "Allow anon delete invoices"
+  on public.invoices for delete
+  to anon, authenticated
+  using (true);
+
+-- Ensure anon can delete (needed in some projects even with RLS policies)
+grant select, insert, update, delete on table public.invoices to anon, authenticated;

@@ -62,6 +62,14 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
     <section className="preview-panel">
       <div className="preview-body">
         <div className="invoice-card" ref={ref}>
+          {state.status === 'paid' && (
+            <img
+              className="inv3-paid-watermark"
+              src="/paid-stamp.png"
+              alt=""
+              aria-hidden="true"
+            />
+          )}
           <div className="inv3">
             <div className="inv3-title">INVOICE</div>
 

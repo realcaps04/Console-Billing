@@ -20,8 +20,71 @@ export function generateInvoiceNumber(dateStr = new Date().toISOString().split('
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
-  const rand = String(Math.floor(10000 + Math.random() * 90000))
-  return `INV-${y}${m}${day}-${rand}`
+  // Time + random keeps back-to-back bills unique
+  const timePart = Date.now().toString(36).toUpperCase().slice(-4)
+  const rand = String(Math.floor(10 + Math.random() * 90))
+  return `INV-${y}${m}${day}-${timePart}${rand}`
+}
+
+export function isValidEmail(value) {
+  const email = String(value ?? '').trim()
+  if (!email) return false
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email)
+}
+
+export function getEmailError(value, { required = false } = {}) {
+  const email = String(value ?? '').trim()
+  if (!email) return required ? 'Email is required.' : ''
+  if (!isValidEmail(email)) return 'Enter a valid email address.'
+  return ''
+}
+
+/** Digits-only mobile: Indian 10-digit starting 6-9 */
+export function extractIndianMobileDigits(value) {
+  let raw = String(value ?? '').trim()
+  // Strip display / pasted country code before digit extraction
+  if (/^\+91/.test(raw) || /^91[\s-]/.test(raw)) {
+    raw = raw.replace(/^\+?91[\s-]*/, '')
+  }
+  let digits = raw.replace(/\D/g, '')
+  if (digits.startsWith('91') && digits.length > 10) digits = digits.slice(2)
+  else if (digits.startsWith('0') && digits.length === 11) digits = digits.slice(1)
+  return digits.slice(0, 10)
+}
+
+export function formatIndianPhone(value) {
+  const digits = extractIndianMobileDigits(value)
+  if (!digits) return ''
+  if (digits.length <= 5) return `+91 ${digits}`
+  return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`
+}
+
+export function isValidIndianPhone(value) {
+  const digits = extractIndianMobileDigits(value)
+  return /^[6-9]\d{9}$/.test(digits)
+}
+
+export function getIndianPhoneError(value, { required = false } = {}) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return required ? 'Phone number is required.' : ''
+  if (!isValidIndianPhone(raw)) return 'Enter a valid Indian mobile number (10 digits, starts with 6–9).'
+  return ''
+}
+
+export function getContactValidationErrors(state) {
+  const toCompany = String(state.toCompany ?? '').trim()
+  return {
+    toCompany: toCompany ? '' : 'Client / company name is required.',
+    fromEmail: getEmailError(state.fromEmail, { required: true }),
+    fromPhone: getIndianPhoneError(state.fromPhone, { required: true }),
+    toEmail: getEmailError(state.toEmail, { required: false }),
+    toPhone: getIndianPhoneError(state.toPhone, { required: false }),
+  }
+}
+
+export function hasContactValidationErrors(state) {
+  const errors = getContactValidationErrors(state)
+  return Object.values(errors).some(Boolean)
 }
 
 // Format date string to readable form

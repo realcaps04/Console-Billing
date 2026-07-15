@@ -1,5 +1,14 @@
-import { supabase } from './supabase'
+import { supabase, isSupabaseConfigured } from './supabase'
 import { computeTotalsWithDiscount } from '../utils'
+
+function requireSupabase() {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error(
+      'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env, then restart npm run dev.',
+    )
+  }
+  return supabase
+}
 
 function mapRowToBill(row) {
   return {
@@ -76,7 +85,8 @@ function mapStateToRow(state) {
 }
 
 export async function fetchInvoices() {
-  const { data, error } = await supabase
+  const client = requireSupabase()
+  const { data, error } = await client
     .from('invoices')
     .select('*')
     .order('created_at', { ascending: false })
@@ -86,8 +96,9 @@ export async function fetchInvoices() {
 }
 
 export async function saveInvoice(state) {
+  const client = requireSupabase()
   const row = mapStateToRow(state)
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('invoices')
     .upsert(row, { onConflict: 'invoice_number' })
     .select()

@@ -6,6 +6,7 @@ import PreviousBills from './components/PreviousBills'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { sanitizeInvoiceNumber, generateInvoiceNumber } from './utils'
+import { fetchInvoices, saveInvoice } from './lib/invoices'
 
 const today = new Date().toISOString().split('T')[0]
 const due = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
@@ -38,14 +39,75 @@ const DEFAULT_STATE = {
   ],
 }
 
+function billToState(bill) {
+  return {
+    ...DEFAULT_STATE,
+    invoiceNumber: bill.invoiceNumber || DEFAULT_STATE.invoiceNumber,
+    status: bill.status || 'unpaid',
+    issueDate: bill.issueDate || today,
+    dueDate: bill.dueDate || due,
+    fromCompany: bill.fromCompany ?? DEFAULT_STATE.fromCompany,
+    fromAddress: bill.fromAddress ?? DEFAULT_STATE.fromAddress,
+    fromEmail: bill.fromEmail ?? DEFAULT_STATE.fromEmail,
+    fromPhone: bill.fromPhone ?? DEFAULT_STATE.fromPhone,
+    toCompany: bill.toCompany || '',
+    toAddress: bill.toAddress || '',
+    toEmail: bill.toEmail || '',
+    toPhone: bill.toPhone || '',
+    currency: bill.currency || '₹',
+    amountPaid: bill.amountPaid ?? 0,
+    discountType: bill.discountType || 'amount',
+    discountValue: bill.discountValue ?? 0,
+    paymentMode: bill.paymentMode || DEFAULT_STATE.paymentMode,
+    upiId: bill.upiId || DEFAULT_STATE.upiId,
+    upiPayeeName: bill.upiPayeeName || DEFAULT_STATE.upiPayeeName,
+    bankDetails: bill.bankDetails || DEFAULT_STATE.bankDetails,
+    extraNotes: bill.extraNotes || DEFAULT_STATE.extraNotes,
+    terms: bill.terms || DEFAULT_STATE.terms,
+    items: Array.isArray(bill.items) && bill.items.length > 0
+      ? bill.items.map((it, i) => ({
+          id: it.id || Date.now() + i,
+          desc: it.desc || '',
+          qty: it.qty ?? 1,
+          rate: it.rate ?? '',
+        }))
+      : [{ id: Date.now(), desc: '', qty: 1, rate: '' }],
+  }
+}
+
 export default function App() {
   const [view, setView] = useState('create')
   const [state, setState] = useState(DEFAULT_STATE)
   const [downloading, setDownloading] = useState(false)
-  const [previousBills] = useState([])
-  const [billsLoading] = useState(false)
-  const [billsError] = useState(null)
+  const [previousBills, setPreviousBills] = useState([])
+  const [billsLoading, setBillsLoading] = useState(false)
+  const [billsError, setBillsError] = useState(null)
   const previewRef = useRef(null)
+
+  const loadBills = useCallback(async () => {
+    setBillsLoading(true)
+    setBillsError(null)
+    try {
+      const bills = await fetchInvoices()
+      setPreviousBills(bills)
+    } catch (e) {
+      console.error(e)
+      const msg = e?.message || 'Failed to load bills'
+      if (String(msg).includes('Could not find the table') || e?.code === 'PGRST205') {
+        setBillsError('Invoices table not found. Run supabase/invoices.sql in your Supabase SQL Editor, then refresh.')
+      } else {
+        setBillsError(msg)
+      }
+      setPreviousBills([])
+    } finally {
+      setBillsLoading(false)
+    }
+  }, [])
+
+  const navigate = useCallback((nextView) => {
+    setView(nextView)
+    if (nextView === 'bills') loadBills()
+  }, [loadBills])
 
   const update = useCallback((key, value) => {
     setState(prev => ({ ...prev, [key]: value }))
@@ -72,10 +134,27 @@ export default function App() {
     }))
   }, [])
 
+  const openBill = useCallback((bill) => {
+    setState(billToState(bill))
+    setView('create')
+  }, [])
+
   const downloadPDF = async () => {
     if (!previewRef.current) return
     setDownloading(true)
     try {
+      try {
+        await saveInvoice(state)
+      } catch (saveErr) {
+        console.error(saveErr)
+        const msg = saveErr?.message || 'Failed to save invoice'
+        if (String(msg).includes('Could not find the table') || saveErr?.code === 'PGRST205') {
+          alert('PDF will download, but Supabase save failed: create the invoices table first (see supabase/invoices.sql).')
+        } else {
+          alert(`PDF will download, but saving failed: ${msg}`)
+        }
+      }
+
       const canvas = await html2canvas(previewRef.current, {
         scale: 3,
         useCORS: true,
@@ -116,7 +195,12 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <AppNav activeView={view} onNavigate={setView} />
+      <AppNav
+        activeView={view}
+        onNavigate={navigate}
+        downloading={downloading}
+        onDownload={downloadPDF}
+      />
 
       {view === 'create' ? (
         <div className="app-layout">
@@ -126,10 +210,8 @@ export default function App() {
             updateItem={updateItem}
             addItem={addItem}
             removeItem={removeItem}
-            downloading={downloading}
-            onDownload={downloadPDF}
           />
-          <InvoicePreview ref={previewRef} state={state} onDownload={downloadPDF} downloading={downloading} />
+          <InvoicePreview ref={previewRef} state={state} />
         </div>
       ) : (
         <PreviousBills
@@ -137,6 +219,8 @@ export default function App() {
           loading={billsLoading}
           error={billsError}
           onNewInvoice={() => setView('create')}
+          onRefresh={loadBills}
+          onOpenBill={openBill}
         />
       )}
     </div>

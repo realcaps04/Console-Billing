@@ -48,24 +48,13 @@ function LineItem({ item, onUpdate, onRemove }) {
   )
 }
 
-export default function FormPanel({ state, update, updateItem, addItem, removeItem, downloading, onDownload }) {
+export default function FormPanel({ state, update, updateItem, addItem, removeItem }) {
   const { subtotal, discount, total } = computeTotalsWithDiscount(state.items, state.discountType, state.discountValue)
   const paid = Number(state.amountPaid) || 0
   const balance = Math.max(0, total - paid)
 
   return (
     <aside className="sidebar">
-      {/* Header */}
-      <div className="sidebar-header">
-        <div className="brand">
-          <div className="brand-icon">CP</div>
-          <div className="brand-text">
-            <div className="brand-name">Console Projects</div>
-            <div className="brand-sub">Invoice Generator v1.0</div>
-          </div>
-        </div>
-      </div>
-
       <div className="sidebar-body">
         {/* Invoice Details */}
         <div className="form-section">
@@ -263,24 +252,6 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
             <span style={{ fontFamily: 'JetBrains Mono', color: 'var(--gold)' }}>{state.currency} {balance.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
           </div>
         </div>
-      </div>
-
-      {/* Download CTA */}
-      <div className="sidebar-footer">
-        <button className="btn-download-main" onClick={onDownload} disabled={downloading}>
-          {downloading ? (
-            <>⏳ Generating PDF…</>
-          ) : (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Download Invoice PDF
-            </>
-          )}
-        </button>
       </div>
     </aside>
   )

@@ -1,20 +1,30 @@
 import { fmt, fmtDateShort } from '../utils'
 
-/**
- * Previous Bills view — wired for Supabase later.
- * Pass `bills` from your API once available.
- */
-export default function PreviousBills({ bills = [], loading = false, error = null, onNewInvoice }) {
+export default function PreviousBills({
+  bills = [],
+  loading = false,
+  error = null,
+  onNewInvoice,
+  onRefresh,
+  onOpenBill,
+}) {
   return (
     <section className="bills-panel">
       <div className="bills-header">
         <div>
           <h1 className="bills-title">Previous Bills</h1>
-          <p className="bills-sub">View and reopen past invoices</p>
+          <p className="bills-sub">View and reopen past invoices from Supabase</p>
         </div>
-        <button type="button" className="btn-download-main bills-new-btn" onClick={onNewInvoice}>
-          + New Invoice
-        </button>
+        <div className="bills-header-actions">
+          {onRefresh && (
+            <button type="button" className="bills-refresh-btn" onClick={onRefresh} disabled={loading}>
+              {loading ? 'Refreshing…' : 'Refresh'}
+            </button>
+          )}
+          <button type="button" className="btn-download-main bills-new-btn" onClick={onNewInvoice}>
+            + New Invoice
+          </button>
+        </div>
       </div>
 
       {loading && (
@@ -32,7 +42,7 @@ export default function PreviousBills({ bills = [], loading = false, error = nul
       {!loading && !error && bills.length === 0 && (
         <div className="bills-empty">
           <p>No previous bills yet.</p>
-          <p className="bills-empty-hint">Saved invoices will appear here once Supabase is connected.</p>
+          <p className="bills-empty-hint">Download a PDF from New Invoice to save it here.</p>
         </div>
       )}
 
@@ -47,6 +57,7 @@ export default function PreviousBills({ bills = [], loading = false, error = nul
                 <th>Due Date</th>
                 <th>Status</th>
                 <th>Amount</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -63,6 +74,15 @@ export default function PreviousBills({ bills = [], loading = false, error = nul
                   </td>
                   <td className="bills-mono bills-amount">
                     {fmt(bill.balanceDue ?? bill.total ?? 0, bill.currency || '₹')}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="bills-open-btn"
+                      onClick={() => onOpenBill?.(bill)}
+                    >
+                      Open
+                    </button>
                   </td>
                 </tr>
               ))}

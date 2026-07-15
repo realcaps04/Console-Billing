@@ -9,7 +9,7 @@ const STATUS_LABELS = {
   draft: 'Draft',
 }
 
-const InvoicePreview = forwardRef(function InvoicePreview({ state, onDownload, downloading }, ref) {
+const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
   const displayItems = state.items
 
   const { subtotal, discount, total } = computeTotalsWithDiscount(displayItems, state.discountType, state.discountValue)
@@ -60,25 +60,6 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state, onDownload, d
 
   return (
     <section className="preview-panel">
-      <div className="preview-topbar">
-        <div className="preview-title">
-          <span className="live-dot" />
-          Live Preview
-        </div>
-        <button className="btn-download-main" style={{ width: 'auto', padding: '0.6rem 1.2rem', fontSize: '0.82rem' }} onClick={onDownload} disabled={downloading}>
-          {downloading ? '⏳ Generating…' : (
-            <>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Download PDF
-            </>
-          )}
-        </button>
-      </div>
-
       <div className="preview-body">
         <div className="invoice-card" ref={ref}>
           <div className="inv3">

@@ -582,12 +582,20 @@ body {
   vertical-align: middle;
 }
 
-.bills-col-invoice { width: 20%; }
-.bills-col-client { width: 18%; }
-.bills-col-details { width: 16%; }
-.bills-col-amounts { width: 16%; }
+.bills-col-invoice { width: 18%; }
+.bills-col-client { width: 16%; }
+.bills-col-details { width: 14%; }
+.bills-col-total { width: 11%; }
+.bills-col-balance { width: 11%; }
 .bills-col-status { width: 10%; }
 .bills-col-actions { width: 14%; }
+
+.bills-table .bills-col-total,
+.bills-table .bills-col-balance {
+  text-align: right;
+  vertical-align: middle;
+  white-space: nowrap;
+}
 
 .bills-table .bills-col-status {
   text-align: center;
@@ -608,8 +616,7 @@ body {
 }
 
 .bills-invoice-cell,
-.bills-client-cell,
-.bills-amounts-cell {
+.bills-client-cell {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -632,26 +639,6 @@ body {
   line-height: 1.4;
 }
 
-.bills-amount-line {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.76rem;
-}
-
-.bills-amount-label {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text3);
-}
-
-.bills-amount-balance .bills-amount {
-  color: #0f766e;
-}
-
 .bills-client {
   display: block;
   font-weight: 600;
@@ -662,7 +649,8 @@ body {
 }
 
 .bills-mono {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-variant-numeric: tabular-nums;
   font-size: 0.8rem;
   font-weight: 600;
   color: #334155;
@@ -673,6 +661,10 @@ body {
   font-weight: 800;
   color: #0f766e;
   white-space: nowrap;
+}
+
+.bills-muted {
+  color: var(--text3);
 }
 
 .bills-actions-cell {

@@ -275,7 +275,8 @@ export default function PreviousBills({
                   <th className="bills-col-invoice">Document</th>
                   <th className="bills-col-client">Client</th>
                   <th className="bills-col-details">Details</th>
-                  <th className="bills-col-amounts">Amounts</th>
+                  <th className="bills-col-total">Total</th>
+                  <th className="bills-col-balance">Balance</th>
                   <th className="bills-col-status">Status</th>
                   <th className="bills-col-actions">Actions</th>
                 </tr>
@@ -310,19 +311,15 @@ export default function PreviousBills({
                       <td className="bills-col-details">
                         <span className="bills-row-detail">{itemSummary(bill)}</span>
                       </td>
-                      <td className="bills-col-amounts">
-                        <div className="bills-amounts-cell">
-                          <span className="bills-amount-line">
-                            <span className="bills-amount-label">Total</span>
-                            <span className="bills-mono">{fmt(total, bill.currency || '₹')}</span>
-                          </span>
-                          {!estimate && (
-                            <span className="bills-amount-line bills-amount-balance">
-                              <span className="bills-amount-label">Balance</span>
-                              <span className="bills-mono bills-amount">{fmt(balance, bill.currency || '₹')}</span>
-                            </span>
-                          )}
-                        </div>
+                      <td className="bills-col-total">
+                        <span className="bills-mono">{fmt(total, bill.currency || '₹')}</span>
+                      </td>
+                      <td className="bills-col-balance">
+                        {estimate ? (
+                          <span className="bills-mono bills-muted">—</span>
+                        ) : (
+                          <span className="bills-mono bills-amount">{fmt(balance, bill.currency || '₹')}</span>
+                        )}
                       </td>
                       <td className="bills-col-status">
                         <span className={`status-badge status-${status}`}>

@@ -117,6 +117,50 @@ export function computeTotalsWithDiscount(items, discountType, discountValue) {
   return { subtotal, discount, total }
 }
 
+/** Round money to 2 decimal places for stable comparisons */
+export function roundMoney(value) {
+  return Math.round((Number(value) || 0) * 100) / 100
+}
+
+/**
+ * Derive payment status from invoice total and amount paid.
+ * unpaid → nothing paid
+ * partially_paid → some paid but balance remains
+ * paid → paid covers total (or overpaid)
+ */
+export function derivePaymentStatus(total, amountPaid) {
+  const t = roundMoney(total)
+  const p = Math.max(0, roundMoney(amountPaid))
+  if (p <= 0) return 'unpaid'
+  if (t <= 0 || p >= t) return 'paid'
+  return 'partially_paid'
+}
+
+export function paymentStatusLabel(status) {
+  const labels = {
+    unpaid: 'Unpaid',
+    partially_paid: 'Partially paid',
+    paid: 'Paid',
+    overdue: 'Overdue',
+    draft: 'Draft',
+  }
+  return labels[status] || 'Unpaid'
+}
+
+/** Sync status from line items / discount / paid amount */
+export function withDerivedPaymentFields(state) {
+  const { total } = computeTotalsWithDiscount(
+    state.items,
+    state.discountType,
+    state.discountValue,
+  )
+  const status = derivePaymentStatus(total, state.amountPaid)
+  return {
+    ...state,
+    status,
+  }
+}
+
 const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
 const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
 

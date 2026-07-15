@@ -15,15 +15,33 @@ export default function AppNav({ activeView, onNavigate, downloading, onDownload
             type="button"
             className={`app-nav-link${activeView === 'create' ? ' active' : ''}`}
             onClick={() => onNavigate('create')}
+            title="New Invoice"
+            aria-label="New Invoice"
           >
-            New Invoice
+            <svg className="app-nav-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="11" x2="12" y2="17" />
+              <line x1="9" y1="14" x2="15" y2="14" />
+            </svg>
+            <span className="app-nav-btn-label">New Invoice</span>
           </button>
           <button
             type="button"
             className={`app-nav-link${activeView === 'bills' ? ' active' : ''}`}
             onClick={() => onNavigate('bills')}
+            title="Previous Bills"
+            aria-label="Previous Bills"
           >
-            Previous Bills
+            <svg className="app-nav-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+              <path d="M8 6h13" />
+              <path d="M8 12h13" />
+              <path d="M8 18h13" />
+              <path d="M3 6h.01" />
+              <path d="M3 12h.01" />
+              <path d="M3 18h.01" />
+            </svg>
+            <span className="app-nav-btn-label">Previous Bills</span>
           </button>
         </nav>
 
@@ -33,17 +51,24 @@ export default function AppNav({ activeView, onNavigate, downloading, onDownload
             className="btn-download-main app-nav-download"
             onClick={onDownload}
             disabled={downloading}
+            title={downloading ? 'Generating PDF…' : 'Download PDF'}
+            aria-label={downloading ? 'Generating PDF' : 'Download PDF'}
           >
             {downloading ? (
-              <>Generating…</>
+              <>
+                <svg className="app-nav-btn-icon app-nav-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                  <path d="M21 12a9 9 0 11-6.2-8.6" />
+                </svg>
+                <span className="app-nav-btn-label">Generating…</span>
+              </>
             ) : (
               <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <svg className="app-nav-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
                   <polyline points="7 10 12 15 17 10"/>
                   <line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
-                Download PDF
+                <span className="app-nav-btn-label">Download PDF</span>
               </>
             )}
           </button>

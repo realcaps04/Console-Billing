@@ -87,12 +87,16 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
               </button>
             </FormGroup>
             <FormGroup label="Status">
-              <select value={state.status} onChange={e => update('status', e.target.value)}>
-                <option value="unpaid">Unpaid</option>
-                <option value="paid">Paid</option>
-                <option value="overdue">Overdue</option>
-                <option value="draft">Draft</option>
-              </select>
+              <input
+                type="text"
+                value={
+                  state.status === 'partially_paid'
+                    ? 'Partially paid'
+                    : (state.status || 'unpaid').replace(/^\w/, (c) => c.toUpperCase())
+                }
+                readOnly
+                title="Updated automatically from Total and Paid Amount"
+              />
             </FormGroup>
             <FormGroup label="Issue Date">
               <input

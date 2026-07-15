@@ -129,6 +129,9 @@ body {
   box-shadow: none;
   white-space: nowrap;
   flex-shrink: 0;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
 }
 
 .app-nav-download:hover {
@@ -147,6 +150,29 @@ body {
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s, color 0.2s, border-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.app-nav-btn-icon {
+  flex-shrink: 0;
+  display: block;
+}
+
+.app-nav-btn-label {
+  display: inline;
+}
+
+.app-nav-spin {
+  animation: app-nav-spin 0.8s linear infinite;
+}
+
+@keyframes app-nav-spin {
+  to { transform: rotate(360deg); }
+}
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
@@ -198,6 +224,65 @@ body {
 
 .bills-toolbar-left {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.bills-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: 320px;
+}
+
+.bills-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  color: var(--text3);
+  pointer-events: none;
+}
+
+.bills-search-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 2rem 0 2.35rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.84rem;
+  color: var(--text);
+}
+
+.bills-search-input:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.bills-search-input::placeholder {
+  color: var(--text3);
+}
+
+.bills-search-clear {
+  position: absolute;
+  right: 0.35rem;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text3);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.bills-search-clear:hover {
+  background: #f1f5f9;
+  color: var(--text2);
 }
 
 .bills-table-count {
@@ -205,6 +290,15 @@ body {
   font-weight: 700;
   color: var(--text3);
   letter-spacing: 0.02em;
+}
+
+.bills-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
 }
 
 .bills-header {
@@ -300,7 +394,7 @@ body {
 
 .bills-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.85rem;
   margin-bottom: 1.35rem;
 }
@@ -661,19 +755,31 @@ body {
     padding: 0 0.75rem;
     gap: 0.5rem;
   }
+  .app-nav-name {
+    font-size: 0.78rem;
+  }
   .app-nav-sub {
     display: none;
   }
   .app-nav-right {
-    gap: 0.35rem;
+    gap: 0.3rem;
+  }
+  .app-nav-links {
+    gap: 0.25rem;
+  }
+  .app-nav-btn-label {
+    display: none;
   }
   .app-nav-link {
-    padding: 0 0.5rem;
-    font-size: 0.72rem;
+    width: 34px;
+    height: 34px;
+    padding: 0;
   }
   .app-nav-download {
-    padding: 0 0.65rem !important;
-    font-size: 0.7rem !important;
+    width: 34px !important;
+    height: 34px !important;
+    padding: 0 !important;
+    min-width: 34px;
   }
   .bills-header,
   .bills-toolbar {
@@ -1105,6 +1211,7 @@ body {
 }
 
 .status-unpaid  { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+.status-partially_paid { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 .status-paid    { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
 .status-overdue { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 .status-draft   { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
@@ -1847,6 +1954,10 @@ body {
 .inv3-totals td:last-child {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.inv3-total-row td {
+  font-weight: 700;
 }
 
 .inv3-balance-row td {

@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase'
-import { computeTotalsWithDiscount } from '../utils'
+import { computeTotalsWithDiscount, withDerivedPaymentFields, roundMoney } from '../utils'
 
 function requireSupabase() {
   if (!isSupabaseConfigured || !supabase) {
@@ -47,38 +47,39 @@ function mapRowToBill(row) {
 }
 
 function mapStateToRow(state) {
+  const derived = withDerivedPaymentFields(state)
   const { subtotal, discount, total } = computeTotalsWithDiscount(
-    state.items,
-    state.discountType,
-    state.discountValue,
+    derived.items,
+    derived.discountType,
+    derived.discountValue,
   )
-  const paid = Number(state.amountPaid) || 0
-  const balanceDue = Math.max(0, total - paid)
+  const paid = Math.max(0, roundMoney(derived.amountPaid))
+  const balanceDue = Math.max(0, roundMoney(total - paid))
 
   return {
-    invoice_number: state.invoiceNumber,
-    status: state.status,
-    issue_date: state.issueDate,
-    due_date: state.dueDate,
-    from_company: state.fromCompany,
-    from_address: state.fromAddress,
-    from_email: state.fromEmail,
-    from_phone: state.fromPhone,
-    to_company: state.toCompany,
-    to_address: state.toAddress,
-    to_email: state.toEmail,
-    to_phone: state.toPhone,
-    currency: state.currency,
+    invoice_number: derived.invoiceNumber,
+    status: derived.status,
+    issue_date: derived.issueDate,
+    due_date: derived.dueDate,
+    from_company: derived.fromCompany,
+    from_address: derived.fromAddress,
+    from_email: derived.fromEmail,
+    from_phone: derived.fromPhone,
+    to_company: derived.toCompany,
+    to_address: derived.toAddress,
+    to_email: derived.toEmail,
+    to_phone: derived.toPhone,
+    currency: derived.currency,
     amount_paid: paid,
-    discount_type: state.discountType,
-    discount_value: Number(state.discountValue) || 0,
-    payment_mode: state.paymentMode,
-    upi_id: state.upiId,
-    upi_payee_name: state.upiPayeeName,
-    bank_details: state.bankDetails,
-    extra_notes: state.extraNotes,
-    terms: state.terms,
-    items: state.items,
+    discount_type: derived.discountType,
+    discount_value: Number(derived.discountValue) || 0,
+    payment_mode: derived.paymentMode,
+    upi_id: derived.upiId,
+    upi_payee_name: derived.upiPayeeName,
+    bank_details: derived.bankDetails,
+    extra_notes: derived.extraNotes,
+    terms: derived.terms,
+    items: derived.items,
     subtotal,
     discount,
     total,

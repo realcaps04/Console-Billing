@@ -1,21 +1,15 @@
 import { forwardRef, useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import { fmt, fmtDateShort, computeTotalsWithDiscount, amountInWords, buildUpiPaymentUri, generateInvoiceNumber } from '../utils'
-
-const STATUS_LABELS = {
-  unpaid: 'Unpaid',
-  paid: 'Paid',
-  overdue: 'Overdue',
-  draft: 'Draft',
-}
+import { fmt, fmtDateShort, computeTotalsWithDiscount, amountInWords, buildUpiPaymentUri, generateInvoiceNumber, paymentStatusLabel, derivePaymentStatus, roundMoney } from '../utils'
 
 const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
   const displayItems = state.items
 
   const { subtotal, discount, total } = computeTotalsWithDiscount(displayItems, state.discountType, state.discountValue)
   const cur = state.currency || '₹'
-  const paid = Number(state.amountPaid) || 0
-  const balanceDue = Math.max(0, total - paid)
+  const paid = Math.max(0, roundMoney(state.amountPaid))
+  const balanceDue = Math.max(0, roundMoney(total - paid))
+  const status = derivePaymentStatus(total, paid)
 
   const fromAddressLines = (state.fromAddress || '').split('\n').filter(Boolean)
   const bankLines = (state.bankDetails || '').split('\n').map(s => s.trim()).filter(Boolean)
@@ -62,7 +56,7 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
     <section className="preview-panel">
       <div className="preview-body">
         <div className="invoice-card" ref={ref}>
-          {state.status === 'paid' && (
+          {status === 'paid' && (
             <img
               className="inv3-paid-watermark"
               src="/paid-stamp.png"
@@ -100,7 +94,7 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
                         <tr><td>Invoice Date</td><td>{fmtDateShort(state.issueDate)}</td></tr>
                         <tr><td>Due Date</td><td>{fmtDateShort(state.dueDate)}</td></tr>
                         <tr><td>Payment Mode</td><td>{state.paymentMode || 'Bank Transfer'}</td></tr>
-                        <tr><td>Status</td><td>{STATUS_LABELS[state.status] || 'Unpaid'}</td></tr>
+                        <tr><td>Status</td><td>{paymentStatusLabel(status)}</td></tr>
                       </tbody>
                     </table>
                   </td>
@@ -178,12 +172,11 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
                   <td className="inv3-totals-cell">
                     <table className="inv3-totals">
                       <tbody>
-                        <tr><td>Amount</td><td>{fmt(subtotal, cur)}</td></tr>
+                        <tr><td>Subtotal</td><td>{fmt(subtotal, cur)}</td></tr>
                         <tr><td>Discount</td><td>{fmt(discount, cur)}</td></tr>
-                        <tr><td>Sub Total</td><td>{fmt(total, cur)}</td></tr>
-                        <tr><td>Total</td><td>{fmt(total, cur)}</td></tr>
+                        <tr className="inv3-total-row"><td>Total</td><td>{fmt(total, cur)}</td></tr>
                         <tr><td>Paid Amount</td><td>{fmt(paid, cur)}</td></tr>
-                        <tr className="inv3-balance-row"><td>Balance</td><td>{fmt(balanceDue, cur)}</td></tr>
+                        <tr className="inv3-balance-row"><td>Balance Due</td><td>{fmt(balanceDue, cur)}</td></tr>
                       </tbody>
                     </table>
                   </td>
@@ -192,7 +185,7 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
             </table>
 
             <div className="inv3-words">
-              Total amount (in words): <strong>{amountInWords(balanceDue)}</strong>
+              Total amount (in words): <strong>{amountInWords(total)}</strong>
             </div>
 
             <table className="inv3-block">

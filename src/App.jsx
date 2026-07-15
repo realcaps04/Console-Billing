@@ -5,7 +5,7 @@ import DeleteConfirmModal from './components/DeleteConfirmModal'
 import FormPanel from './components/FormPanel'
 import InvoicePreview from './components/InvoicePreview'
 import PreviousBills from './components/PreviousBills'
-import { hasContactValidationErrors, generateInvoiceNumber, computeTotalsWithDiscount } from './utils'
+import { hasContactValidationErrors, generateInvoiceNumber, computeTotalsWithDiscount, withDerivedPaymentFields } from './utils'
 import { fetchInvoices, saveInvoice, deleteInvoice } from './lib/invoices'
 import { downloadInvoicePdf } from './lib/pdf'
 
@@ -72,7 +72,7 @@ function createDefaultState() {
 
 function billToState(bill) {
   const defaults = createDefaultState()
-  return {
+  return withDerivedPaymentFields({
     ...defaults,
     invoiceNumber: bill.invoiceNumber || defaults.invoiceNumber,
     status: bill.status || 'unpaid',
@@ -104,18 +104,17 @@ function billToState(bill) {
           rate: it.rate ?? '',
         }))
       : [{ id: Date.now(), desc: '', qty: 1, rate: '' }],
-  }
+  })
 }
 
 function buildPaidBillState(bill) {
   const state = billToState(bill)
   const { total } = computeTotalsWithDiscount(state.items, state.discountType, state.discountValue)
   const invoiceTotal = Number(bill.total) || total
-  return {
+  return withDerivedPaymentFields({
     ...state,
-    status: 'paid',
     amountPaid: invoiceTotal,
-  }
+  })
 }
 
 export default function App() {
@@ -183,28 +182,46 @@ export default function App() {
   }, [loadBills])
 
   const update = useCallback((key, value) => {
-    setState(prev => ({ ...prev, [key]: value }))
+    setState((prev) => {
+      const next = { ...prev, [key]: value }
+      if (key === 'status') return next
+      if (
+        key === 'amountPaid' ||
+        key === 'discountType' ||
+        key === 'discountValue' ||
+        key === 'items'
+      ) {
+        return withDerivedPaymentFields(next)
+      }
+      return next
+    })
   }, [])
 
   const updateItem = useCallback((id, key, value) => {
-    setState(prev => ({
-      ...prev,
-      items: prev.items.map(it => it.id === id ? { ...it, [key]: value } : it),
-    }))
+    setState((prev) =>
+      withDerivedPaymentFields({
+        ...prev,
+        items: prev.items.map((it) => (it.id === id ? { ...it, [key]: value } : it)),
+      }),
+    )
   }, [])
 
   const addItem = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      items: [...prev.items, { id: Date.now(), desc: '', qty: 1, rate: '' }],
-    }))
+    setState((prev) =>
+      withDerivedPaymentFields({
+        ...prev,
+        items: [...prev.items, { id: Date.now(), desc: '', qty: 1, rate: '' }],
+      }),
+    )
   }, [])
 
   const removeItem = useCallback((id) => {
-    setState(prev => ({
-      ...prev,
-      items: prev.items.length > 1 ? prev.items.filter(it => it.id !== id) : prev.items,
-    }))
+    setState((prev) =>
+      withDerivedPaymentFields({
+        ...prev,
+        items: prev.items.length > 1 ? prev.items.filter((it) => it.id !== id) : prev.items,
+      }),
+    )
   }, [])
 
   const startNewInvoice = useCallback(() => {

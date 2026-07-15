@@ -1,10 +1,16 @@
-import { useEffect, useRef } from 'react'
-import { fmt } from '../utils'
+import { useEffect, useRef, useState } from 'react'
+import { fmt, paymentStatusLabel, derivePaymentStatus, roundMoney } from '../utils'
 
 const MAX_BILLS = 10
 
-function statusLabel(status) {
-  return (status || 'unpaid').replace(/^\w/, (c) => c.toUpperCase())
+function getClientName(bill) {
+  return String(bill.toCompany || bill.clientName || '').trim()
+}
+
+function matchesClientSearch(bill, query) {
+  if (!query) return true
+  const name = getClientName(bill).toLowerCase()
+  return name.includes(query.toLowerCase())
 }
 
 function itemSummary(bill) {
@@ -71,7 +77,11 @@ export default function PreviousBills({
   autoLoad = false,
 }) {
   const loadedRef = useRef(false)
-  const visibleBills = bills.slice(0, MAX_BILLS)
+  const [clientSearch, setClientSearch] = useState('')
+  const searchQuery = clientSearch.trim()
+
+  const filteredBills = bills.filter((bill) => matchesClientSearch(bill, searchQuery))
+  const visibleBills = filteredBills.slice(0, MAX_BILLS)
 
   useEffect(() => {
     if (!autoLoad || loadedRef.current) return
@@ -79,11 +89,17 @@ export default function PreviousBills({
     onRefresh?.()
   }, [autoLoad, onRefresh])
 
-  const unpaidCount = visibleBills.filter((b) => (b.status || 'unpaid') === 'unpaid').length
-  const paidCount = visibleBills.filter((b) => b.status === 'paid').length
+  const unpaidCount = visibleBills.filter((b) => {
+    const status = derivePaymentStatus(b.total, b.amountPaid)
+    return status === 'unpaid'
+  }).length
+  const partialCount = visibleBills.filter((b) => derivePaymentStatus(b.total, b.amountPaid) === 'partially_paid').length
+  const paidCount = visibleBills.filter((b) => derivePaymentStatus(b.total, b.amountPaid) === 'paid').length
   const totalOutstanding = visibleBills.reduce((acc, b) => {
-    if ((b.status || 'unpaid') === 'paid') return acc
-    return acc + (Number(b.balanceDue ?? b.total) || 0)
+    const total = roundMoney(b.total)
+    const paid = roundMoney(b.amountPaid)
+    const balance = Math.max(0, total - paid)
+    return acc + balance
   }, 0)
 
   return (
@@ -91,9 +107,30 @@ export default function PreviousBills({
       <div className="bills-shell">
         <div className="bills-toolbar">
           <div className="bills-toolbar-left">
-            <span className="bills-table-count">
-              Showing {visibleBills.length} of max {MAX_BILLS}
-            </span>
+            <label className="bills-search">
+              <svg className="bills-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="16.5" y1="16.5" x2="21" y2="21" />
+              </svg>
+              <input
+                type="search"
+                className="bills-search-input"
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                placeholder="Search by client name…"
+                aria-label="Search by client name"
+              />
+              {clientSearch && (
+                <button
+                  type="button"
+                  className="bills-search-clear"
+                  onClick={() => setClientSearch('')}
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
+              )}
+            </label>
           </div>
           <div className="bills-header-actions">
             {onRefresh && (
@@ -124,6 +161,10 @@ export default function PreviousBills({
             <div className="bills-stat-card">
               <span className="bills-stat-label">Unpaid</span>
               <strong className="bills-stat-value">{unpaidCount}</strong>
+            </div>
+            <div className="bills-stat-card">
+              <span className="bills-stat-label">Partial</span>
+              <strong className="bills-stat-value">{partialCount}</strong>
             </div>
             <div className="bills-stat-card">
               <span className="bills-stat-label">Paid</span>
@@ -157,7 +198,7 @@ export default function PreviousBills({
           </div>
         )}
 
-        {!loading && !error && visibleBills.length === 0 && (
+        {!loading && !error && bills.length === 0 && (
           <div className="bills-state-card">
             <div className="bills-state-icon bills-state-icon-empty" aria-hidden="true">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -173,6 +214,24 @@ export default function PreviousBills({
             </p>
             <button type="button" className="bills-primary-btn" onClick={onNewInvoice}>
               Create your first invoice
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && bills.length > 0 && filteredBills.length === 0 && (
+          <div className="bills-state-card">
+            <div className="bills-state-icon bills-state-icon-empty" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="16.5" y1="16.5" x2="21" y2="21" />
+              </svg>
+            </div>
+            <h2 className="bills-state-title">No matching clients</h2>
+            <p className="bills-state-copy">
+              No invoices found for <strong>{searchQuery}</strong>. Try a different client name.
+            </p>
+            <button type="button" className="bills-primary-btn" onClick={() => setClientSearch('')}>
+              Clear search
             </button>
           </div>
         )}
@@ -194,9 +253,11 @@ export default function PreviousBills({
                 {visibleBills.map((bill) => {
                   const rowId = bill.id || bill.invoiceNumber
                   const busy = busyBillId === rowId
-                  const isPaid = (bill.status || 'unpaid') === 'paid'
-                  const total = Number(bill.total) || 0
-                  const balance = Number(bill.balanceDue ?? Math.max(0, total - (Number(bill.amountPaid) || 0))) || 0
+                  const total = roundMoney(bill.total)
+                  const paidAmt = roundMoney(bill.amountPaid)
+                  const balance = Math.max(0, roundMoney(bill.balanceDue ?? (total - paidAmt)))
+                  const status = derivePaymentStatus(total, paidAmt)
+                  const isPaid = status === 'paid'
                   return (
                     <tr key={rowId}>
                       <td className="bills-col-invoice">
@@ -227,8 +288,8 @@ export default function PreviousBills({
                         </div>
                       </td>
                       <td className="bills-col-status">
-                        <span className={`status-badge status-${bill.status || 'unpaid'}`}>
-                          {statusLabel(bill.status)}
+                        <span className={`status-badge status-${status}`}>
+                          {paymentStatusLabel(status)}
                         </span>
                       </td>
                       <td className="bills-col-actions bills-actions-cell">
@@ -280,6 +341,13 @@ export default function PreviousBills({
                 })}
               </tbody>
             </table>
+            <div className="bills-table-footer">
+              <span className="bills-table-count">
+                {searchQuery
+                  ? `Showing ${visibleBills.length} of ${filteredBills.length} match${filteredBills.length === 1 ? '' : 'es'}`
+                  : `Showing ${visibleBills.length} of max ${MAX_BILLS}`}
+              </span>
+            </div>
           </div>
         )}
       </div>

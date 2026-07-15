@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback } from 'react'
+import AppNav from './components/AppNav'
 import FormPanel from './components/FormPanel'
 import InvoicePreview from './components/InvoicePreview'
+import PreviousBills from './components/PreviousBills'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { sanitizeInvoiceNumber, generateInvoiceNumber } from './utils'
@@ -37,8 +39,12 @@ const DEFAULT_STATE = {
 }
 
 export default function App() {
+  const [view, setView] = useState('create')
   const [state, setState] = useState(DEFAULT_STATE)
   const [downloading, setDownloading] = useState(false)
+  const [previousBills] = useState([])
+  const [billsLoading] = useState(false)
+  const [billsError] = useState(null)
   const previewRef = useRef(null)
 
   const update = useCallback((key, value) => {
@@ -83,7 +89,6 @@ export default function App() {
       const pageH = pdf.internal.pageSize.getHeight()
       const margin = 8
 
-      // Render the canvas at a fixed width; add pages if height overflows.
       const imgW = pageW - margin * 2
       const imgH = (canvas.height * imgW) / canvas.width
 
@@ -93,7 +98,6 @@ export default function App() {
       pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH, undefined, 'FAST')
       remainingH -= (pageH - margin * 2)
 
-      // If the content is taller than one page, shift the same image up on subsequent pages.
       while (remainingH > 0) {
         pdf.addPage()
         y = margin - (imgH - remainingH)
@@ -111,17 +115,30 @@ export default function App() {
   }
 
   return (
-    <div className="app-layout">
-      <FormPanel
-        state={state}
-        update={update}
-        updateItem={updateItem}
-        addItem={addItem}
-        removeItem={removeItem}
-        downloading={downloading}
-        onDownload={downloadPDF}
-      />
-      <InvoicePreview ref={previewRef} state={state} onDownload={downloadPDF} downloading={downloading} />
+    <div className="app-shell">
+      <AppNav activeView={view} onNavigate={setView} />
+
+      {view === 'create' ? (
+        <div className="app-layout">
+          <FormPanel
+            state={state}
+            update={update}
+            updateItem={updateItem}
+            addItem={addItem}
+            removeItem={removeItem}
+            downloading={downloading}
+            onDownload={downloadPDF}
+          />
+          <InvoicePreview ref={previewRef} state={state} onDownload={downloadPDF} downloading={downloading} />
+        </div>
+      ) : (
+        <PreviousBills
+          bills={previousBills}
+          loading={billsLoading}
+          error={billsError}
+          onNewInvoice={() => setView('create')}
+        />
+      )}
     </div>
   )
 }

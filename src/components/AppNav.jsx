@@ -1,4 +1,4 @@
-export default function AppNav({ activeView, onNavigate, downloading, onDownload }) {
+export default function AppNav({ activeView, onNavigate, downloading, onDownload, showDownload = false }) {
   return (
     <header className="app-nav">
       <div className="app-nav-brand">
@@ -28,6 +28,21 @@ export default function AppNav({ activeView, onNavigate, downloading, onDownload
           </button>
           <button
             type="button"
+            className={`app-nav-link${activeView === 'estimate' ? ' active' : ''}`}
+            onClick={() => onNavigate('estimate')}
+            title="New Estimate"
+            aria-label="New Estimate"
+          >
+            <svg className="app-nav-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <path d="M9 15h6" />
+              <path d="M9 11h6" />
+            </svg>
+            <span className="app-nav-btn-label">New Estimate</span>
+          </button>
+          <button
+            type="button"
             className={`app-nav-link${activeView === 'bills' ? ' active' : ''}`}
             onClick={() => onNavigate('bills')}
             title="Previous Bills"
@@ -45,7 +60,7 @@ export default function AppNav({ activeView, onNavigate, downloading, onDownload
           </button>
         </nav>
 
-        {activeView === 'create' && (
+        {showDownload && (
           <button
             type="button"
             className="btn-download-main app-nav-download"

@@ -1,10 +1,11 @@
 import {
   computeTotalsWithDiscount,
   sanitizeInvoiceNumber,
-  generateInvoiceNumber,
+  generateDocumentNumber,
   formatIndianPhone,
   getContactValidationErrors,
   hasContactValidationErrors,
+  isEstimate,
 } from '../utils'
 
 function SectionLabel({ children }) {
@@ -57,6 +58,8 @@ function LineItem({ item, onUpdate, onRemove }) {
 }
 
 export default function FormPanel({ state, update, updateItem, addItem, removeItem, saving, onSave }) {
+  const estimate = isEstimate(state)
+  const docLabel = estimate ? 'Estimate' : 'Invoice'
   const { subtotal, discount, total } = computeTotalsWithDiscount(state.items, state.discountType, state.discountValue)
   const paid = Number(state.amountPaid) || 0
   const balance = Math.max(0, total - paid)
@@ -66,22 +69,21 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
   return (
     <aside className="sidebar">
       <div className="sidebar-body">
-        {/* Invoice Details */}
         <div className="form-section">
-          <SectionLabel>Invoice Details</SectionLabel>
+          <SectionLabel>{docLabel} Details</SectionLabel>
           <div className="form-grid">
-            <FormGroup label="Invoice Number">
+            <FormGroup label={`${docLabel} Number`}>
               <input
                 type="text"
                 value={state.invoiceNumber}
                 onChange={e => update('invoiceNumber', sanitizeInvoiceNumber(e.target.value))}
-                placeholder="INV-20260714-48291"
+                placeholder={estimate ? 'EST-20260714-48291' : 'INV-20260714-48291'}
               />
               <button
                 type="button"
                 className="btn-add-item"
                 style={{ marginTop: '0.45rem', padding: '0.45rem' }}
-                onClick={() => update('invoiceNumber', generateInvoiceNumber(state.issueDate))}
+                onClick={() => update('invoiceNumber', generateDocumentNumber(state.documentType, state.issueDate))}
               >
                 Generate New Number
               </button>
@@ -90,12 +92,14 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
               <input
                 type="text"
                 value={
-                  state.status === 'partially_paid'
-                    ? 'Partially paid'
-                    : (state.status || 'unpaid').replace(/^\w/, (c) => c.toUpperCase())
+                  estimate
+                    ? 'Draft'
+                    : state.status === 'partially_paid'
+                      ? 'Partially paid'
+                      : (state.status || 'unpaid').replace(/^\w/, (c) => c.toUpperCase())
                 }
                 readOnly
-                title="Updated automatically from Total and Paid Amount"
+                title={estimate ? 'Estimates are saved as draft' : 'Updated automatically from Total and Paid Amount'}
               />
             </FormGroup>
             <FormGroup label="Issue Date">
@@ -213,14 +217,16 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
             <FormGroup label="Currency Symbol">
               <input type="text" value={state.currency} onChange={e => update('currency', e.target.value)} />
             </FormGroup>
-            <FormGroup label="Already Paid Amount">
-              <input
-                type="number"
-                min="0"
-                value={state.amountPaid}
-                onChange={e => update('amountPaid', e.target.value)}
-              />
-            </FormGroup>
+            {!estimate && (
+              <FormGroup label="Already Paid Amount">
+                <input
+                  type="number"
+                  min="0"
+                  value={state.amountPaid}
+                  onChange={e => update('amountPaid', e.target.value)}
+                />
+              </FormGroup>
+            )}
             <FormGroup label="Discount Type">
               <select value={state.discountType} onChange={e => update('discountType', e.target.value)}>
                 <option value="amount">Amount</option>
@@ -235,33 +241,37 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
                 onChange={e => update('discountValue', e.target.value)}
               />
             </FormGroup>
-            <FormGroup label="Payment Mode">
-              <input
-                type="text"
-                value={state.paymentMode}
-                onChange={e => update('paymentMode', e.target.value)}
-                placeholder="Bank Transfer"
-              />
-            </FormGroup>
-            <FormGroup label="UPI ID" full>
-              <input
-                type="text"
-                value={state.upiId}
-                onChange={e => update('upiId', e.target.value.trim().toLowerCase())}
-                placeholder="name@bank"
-              />
-            </FormGroup>
-            <FormGroup label="UPI Payee Name" full>
-              <input
-                type="text"
-                value={state.upiPayeeName}
-                onChange={e => update('upiPayeeName', e.target.value)}
-                placeholder="Name registered with UPI/bank"
-              />
-            </FormGroup>
-            <FormGroup label="Bank Details" full>
-              <textarea rows={4} value={state.bankDetails} placeholder="Account name, number, IFSC..." onChange={e => update('bankDetails', e.target.value)} />
-            </FormGroup>
+            {!estimate && (
+              <>
+                <FormGroup label="Payment Mode">
+                  <input
+                    type="text"
+                    value={state.paymentMode}
+                    onChange={e => update('paymentMode', e.target.value)}
+                    placeholder="Bank Transfer"
+                  />
+                </FormGroup>
+                <FormGroup label="UPI ID" full>
+                  <input
+                    type="text"
+                    value={state.upiId}
+                    onChange={e => update('upiId', e.target.value.trim().toLowerCase())}
+                    placeholder="name@bank"
+                  />
+                </FormGroup>
+                <FormGroup label="UPI Payee Name" full>
+                  <input
+                    type="text"
+                    value={state.upiPayeeName}
+                    onChange={e => update('upiPayeeName', e.target.value)}
+                    placeholder="Name registered with UPI/bank"
+                  />
+                </FormGroup>
+                <FormGroup label="Bank Details" full>
+                  <textarea rows={4} value={state.bankDetails} placeholder="Account name, number, IFSC..." onChange={e => update('bankDetails', e.target.value)} />
+                </FormGroup>
+              </>
+            )}
             <FormGroup label="Notes" full>
               <textarea rows={2} value={state.extraNotes} placeholder="Thank you for your business." onChange={e => update('extraNotes', e.target.value)} />
             </FormGroup>
@@ -292,14 +302,18 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
             <span>Total</span>
             <span style={{ fontFamily: 'JetBrains Mono', color: 'var(--success)' }}>{state.currency} {total.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text2)', marginTop: '0.5rem' }}>
-            <span>Paid</span>
-            <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{state.currency} {paid.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text)', borderTop: '1px solid var(--border)', paddingTop: '0.5rem', marginTop: '0.5rem', fontWeight: 800 }}>
-            <span>Balance Due</span>
-            <span style={{ fontFamily: 'JetBrains Mono', color: 'var(--gold)' }}>{state.currency} {balance.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
-          </div>
+          {!estimate && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text2)', marginTop: '0.5rem' }}>
+                <span>Paid</span>
+                <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{state.currency} {paid.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text)', borderTop: '1px solid var(--border)', paddingTop: '0.5rem', marginTop: '0.5rem', fontWeight: 800 }}>
+                <span>Balance Due</span>
+                <span style={{ fontFamily: 'JetBrains Mono', color: 'var(--gold)' }}>{state.currency} {balance.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -311,7 +325,7 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
           disabled={saving || !canSave}
           title={!canSave ? 'Fix required fields before saving' : undefined}
         >
-          {saving ? 'Saving…' : 'Save Invoice'}
+          {saving ? 'Saving…' : `Save ${docLabel}`}
         </button>
         {!canSave && (
           <p className="save-hint">Fix required field errors before saving.</p>

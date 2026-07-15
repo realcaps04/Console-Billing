@@ -5,7 +5,7 @@ import DeleteConfirmModal from './components/DeleteConfirmModal'
 import FormPanel from './components/FormPanel'
 import InvoicePreview from './components/InvoicePreview'
 import PreviousBills from './components/PreviousBills'
-import { hasContactValidationErrors, generateInvoiceNumber, computeTotalsWithDiscount, withDerivedPaymentFields } from './utils'
+import { hasContactValidationErrors, generateInvoiceNumber, generateEstimateNumber, computeTotalsWithDiscount, withDerivedPaymentFields } from './utils'
 import { fetchInvoices, saveInvoice, deleteInvoice } from './lib/invoices'
 import { downloadInvoicePdf } from './lib/pdf'
 
@@ -13,10 +13,10 @@ const VIEW_STORAGE_KEY = 'consolebilling_active_view'
 
 function getInitialView() {
   const hash = window.location.hash.replace('#', '')
-  if (hash === 'create' || hash === 'bills') return hash
+  if (hash === 'create' || hash === 'estimate' || hash === 'bills') return hash
   try {
     const stored = sessionStorage.getItem(VIEW_STORAGE_KEY)
-    if (stored === 'create' || stored === 'bills') return stored
+    if (stored === 'create' || stored === 'estimate' || stored === 'bills') return stored
   } catch {
     // ignore
   }
@@ -38,12 +38,14 @@ function persistView(nextView) {
 const today = new Date().toISOString().split('T')[0]
 const due = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
 
-function createDefaultState() {
+function createDefaultState(documentType = 'invoice') {
   const issueDate = new Date().toISOString().split('T')[0]
   const dueDate = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+  const isEstimate = documentType === 'estimate'
   return {
-    invoiceNumber: generateInvoiceNumber(issueDate),
-    status: 'unpaid',
+    documentType,
+    invoiceNumber: isEstimate ? generateEstimateNumber(issueDate) : generateInvoiceNumber(issueDate),
+    status: isEstimate ? 'draft' : 'unpaid',
     issueDate,
     dueDate,
     fromCompany: 'Console Projects',
@@ -58,12 +60,16 @@ function createDefaultState() {
     amountPaid: 0,
     discountType: 'amount',
     discountValue: 0,
-    paymentMode: 'Bank Transfer',
-    upiId: 'shigybiju9562-1@oksbi',
-    upiPayeeName: 'Shyji Biju',
-    bankDetails: 'Account Holder Name: Shyji Biju\nAccount Number: 44078284542\nIFSC Code: SBIN0070698\nBank Name: State Bank of India',
-    extraNotes: 'Thank you for your business.',
-    terms: 'Payment is due within 7 days of the invoice date.\nAll amounts are payable in Indian Rupees.\nThis is a non-GST service invoice.',
+    paymentMode: isEstimate ? '' : 'Bank Transfer',
+    upiId: isEstimate ? '' : 'shigybiju9562-1@oksbi',
+    upiPayeeName: isEstimate ? '' : 'Shyji Biju',
+    bankDetails: isEstimate
+      ? ''
+      : 'Account Holder Name: Shyji Biju\nAccount Number: 44078284542\nIFSC Code: SBIN0070698\nBank Name: State Bank of India',
+    extraNotes: isEstimate ? 'Thank you for considering our services.' : 'Thank you for your business.',
+    terms: isEstimate
+      ? 'This is a non-binding estimate valid for 7 days.\nAll amounts are payable in Indian Rupees.\nThis is a non-GST service estimate.'
+      : 'Payment is due within 7 days of the invoice date.\nAll amounts are payable in Indian Rupees.\nThis is a non-GST service invoice.',
     items: [
       { id: Date.now(), desc: '', qty: 1, rate: '' },
     ],
@@ -74,6 +80,7 @@ function billToState(bill) {
   const defaults = createDefaultState()
   return withDerivedPaymentFields({
     ...defaults,
+    documentType: bill.documentType || defaults.documentType,
     invoiceNumber: bill.invoiceNumber || defaults.invoiceNumber,
     status: bill.status || 'unpaid',
     issueDate: bill.issueDate || today,
@@ -225,13 +232,18 @@ export default function App() {
   }, [])
 
   const startNewInvoice = useCallback(() => {
-    setState(createDefaultState())
+    setState(createDefaultState('invoice'))
     navigate('create')
+  }, [navigate])
+
+  const startNewEstimate = useCallback(() => {
+    setState(createDefaultState('estimate'))
+    navigate('estimate')
   }, [navigate])
 
   const openBill = useCallback((bill) => {
     setState(billToState(bill))
-    navigate('create')
+    navigate((bill.documentType || 'invoice') === 'estimate' ? 'estimate' : 'create')
   }, [navigate])
 
   const requestDeleteBill = useCallback((bill) => {
@@ -286,6 +298,7 @@ export default function App() {
   }, [])
 
   const markPaidAndDownload = useCallback(async (bill) => {
+    if ((bill.documentType || 'invoice') === 'estimate') return
     const rowId = bill.id || bill.invoiceNumber
     const isPaid = (bill.status || 'unpaid') === 'paid'
     setBusyBillId(rowId)
@@ -322,10 +335,13 @@ export default function App() {
     setSaving(true)
     try {
       await saveInvoice(state)
-      setState(createDefaultState())
+      const savedType = state.documentType || 'invoice'
+      setState(createDefaultState(savedType))
       setSaveModal({
         title: 'Saved',
-        message: 'Invoice saved to Supabase.',
+        message: savedType === 'estimate'
+          ? 'Estimate saved to Supabase.'
+          : 'Invoice saved to Supabase.',
       })
     } catch (e) {
       console.error(e)
@@ -358,13 +374,15 @@ export default function App() {
         activeView={view}
         onNavigate={(nextView) => {
           if (nextView === 'create') startNewInvoice()
+          else if (nextView === 'estimate') startNewEstimate()
           else navigate(nextView)
         }}
         downloading={downloading}
         onDownload={downloadPDF}
+        showDownload={view === 'create' || view === 'estimate'}
       />
 
-      {view === 'create' ? (
+      {view === 'create' || view === 'estimate' ? (
         <div className="app-layout">
           <FormPanel
             state={state}
@@ -383,6 +401,7 @@ export default function App() {
           loading={billsLoading}
           error={billsError}
           onNewInvoice={startNewInvoice}
+          onNewEstimate={startNewEstimate}
           onRefresh={loadBills}
           onEditBill={openBill}
           onDeleteBill={requestDeleteBill}

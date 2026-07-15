@@ -20,10 +20,29 @@ export function generateInvoiceNumber(dateStr = new Date().toISOString().split('
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
-  // Time + random keeps back-to-back bills unique
   const timePart = Date.now().toString(36).toUpperCase().slice(-4)
   const rand = String(Math.floor(10 + Math.random() * 90))
   return `INV-${y}${m}${day}-${timePart}${rand}`
+}
+
+export function generateEstimateNumber(dateStr = new Date().toISOString().split('T')[0]) {
+  const d = new Date(`${dateStr}T00:00:00`)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const timePart = Date.now().toString(36).toUpperCase().slice(-4)
+  const rand = String(Math.floor(10 + Math.random() * 90))
+  return `EST-${y}${m}${day}-${timePart}${rand}`
+}
+
+export function generateDocumentNumber(documentType = 'invoice', dateStr = new Date().toISOString().split('T')[0]) {
+  return documentType === 'estimate'
+    ? generateEstimateNumber(dateStr)
+    : generateInvoiceNumber(dateStr)
+}
+
+export function isEstimate(state) {
+  return (state?.documentType || 'invoice') === 'estimate'
 }
 
 export function isValidEmail(value) {
@@ -149,6 +168,9 @@ export function paymentStatusLabel(status) {
 
 /** Sync status from line items / discount / paid amount */
 export function withDerivedPaymentFields(state) {
+  if (isEstimate(state)) {
+    return { ...state, status: 'draft', amountPaid: 0 }
+  }
   const { total } = computeTotalsWithDiscount(
     state.items,
     state.discountType,

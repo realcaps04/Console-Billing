@@ -1,15 +1,20 @@
 import { forwardRef, useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import { fmt, fmtDateShort, computeTotalsWithDiscount, amountInWords, buildUpiPaymentUri, generateInvoiceNumber, paymentStatusLabel, derivePaymentStatus, roundMoney } from '../utils'
+import { fmt, fmtDateShort, computeTotalsWithDiscount, amountInWords, buildUpiPaymentUri, generateDocumentNumber, paymentStatusLabel, derivePaymentStatus, roundMoney, isEstimate } from '../utils'
 
 const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
   const displayItems = state.items
+  const estimate = isEstimate(state)
 
   const { subtotal, discount, total } = computeTotalsWithDiscount(displayItems, state.discountType, state.discountValue)
   const cur = state.currency || '₹'
   const paid = Math.max(0, roundMoney(state.amountPaid))
   const balanceDue = Math.max(0, roundMoney(total - paid))
-  const status = derivePaymentStatus(total, paid)
+  const status = estimate ? 'draft' : derivePaymentStatus(total, paid)
+  const docTitle = estimate ? 'ESTIMATE' : 'INVOICE'
+  const docNoLabel = estimate ? 'Estimate #' : 'Invoice #'
+  const dateLabel = estimate ? 'Estimate Date' : 'Invoice Date'
+  const serviceTag = estimate ? 'Non-GST Service Estimate' : 'Non-GST Service Invoice'
 
   const fromAddressLines = (state.fromAddress || '').split('\n').filter(Boolean)
   const bankLines = (state.bankDetails || '').split('\n').map(s => s.trim()).filter(Boolean)
@@ -17,18 +22,22 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
   const noteLines = (state.extraNotes || '').split('\n').map(s => s.trim()).filter(Boolean)
 
   const totalQty = displayItems.reduce((acc, it) => acc + (Number(it.qty) || 0), 0)
-  const invoiceNo = state.invoiceNumber || generateInvoiceNumber(state.issueDate)
+  const invoiceNo = state.invoiceNumber || generateDocumentNumber(state.documentType, state.issueDate)
   const upiId = (state.upiId || 'shigybiju9562-1@oksbi').trim().toLowerCase()
   const upiPayeeName = state.upiPayeeName || 'Shyji Biju'
   const [upiQrDataUrl, setUpiQrDataUrl] = useState('/upi-qr-static.png')
+  const upiAmount = balanceDue
+  const upiNote = `Invoice ${invoiceNo}`
 
   useEffect(() => {
+    if (estimate) return undefined
+
     let cancelled = false
     const uri = buildUpiPaymentUri({
       vpa: upiId,
       payeeName: upiPayeeName,
-      amount: balanceDue,
-      note: `Invoice ${invoiceNo}`,
+      amount: upiAmount,
+      note: upiNote,
       txnRef: invoiceNo,
     })
 
@@ -50,13 +59,13 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
       })
 
     return () => { cancelled = true }
-  }, [upiId, upiPayeeName, balanceDue, invoiceNo])
+  }, [estimate, upiId, upiPayeeName, upiAmount, upiNote, invoiceNo])
 
   return (
     <section className="preview-panel">
       <div className="preview-body">
         <div className="invoice-card" ref={ref}>
-          {status === 'paid' && (
+          {!estimate && status === 'paid' && (
             <img
               className="inv3-paid-watermark"
               src="/paid-stamp.png"
@@ -65,7 +74,7 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
             />
           )}
           <div className="inv3">
-            <div className="inv3-title">INVOICE</div>
+            <div className="inv3-title">{docTitle}</div>
 
             <table className="inv3-block">
               <tbody>
@@ -81,7 +90,7 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
                       </div>
                       <div>
                         <div className="inv3-company">{state.fromCompany || 'Console Projects'}</div>
-                        <div className="inv3-service-tag">Non-GST Service Invoice</div>
+                        <div className="inv3-service-tag">{serviceTag}</div>
                       </div>
                     </div>
                     {fromAddressLines.map((line, i) => <div key={i} className="inv3-line">{line}</div>)}
@@ -90,11 +99,11 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
                   <td className="inv3-meta">
                     <table className="inv3-meta-table">
                       <tbody>
-                        <tr><td>Invoice #</td><td>{invoiceNo}</td></tr>
-                        <tr><td>Invoice Date</td><td>{fmtDateShort(state.issueDate)}</td></tr>
-                        <tr><td>Due Date</td><td>{fmtDateShort(state.dueDate)}</td></tr>
-                        <tr><td>Payment Mode</td><td>{state.paymentMode || 'Bank Transfer'}</td></tr>
-                        <tr><td>Status</td><td>{paymentStatusLabel(status)}</td></tr>
+                        <tr><td>{docNoLabel}</td><td>{invoiceNo}</td></tr>
+                        <tr><td>{dateLabel}</td><td>{fmtDateShort(state.issueDate)}</td></tr>
+                        <tr><td>{estimate ? 'Valid Until' : 'Due Date'}</td><td>{fmtDateShort(state.dueDate)}</td></tr>
+                        {!estimate && <tr><td>Payment Mode</td><td>{state.paymentMode || 'Bank Transfer'}</td></tr>}
+                        <tr><td>Status</td><td>{estimate ? 'Draft' : paymentStatusLabel(status)}</td></tr>
                       </tbody>
                     </table>
                   </td>
@@ -119,8 +128,17 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
                   </td>
                   <td className="inv3-party-cell">
                     <div className="inv3-line">Service Type: Professional Services (Non-GST)</div>
-                    <div className="inv3-line">Payment Due: {fmtDateShort(state.dueDate)}</div>
-                    <div className="inv3-line">Balance Due: {fmt(balanceDue, cur)}</div>
+                    {estimate ? (
+                      <>
+                        <div className="inv3-line">Valid Until: {fmtDateShort(state.dueDate)}</div>
+                        <div className="inv3-line">Estimated Total: {fmt(total, cur)}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="inv3-line">Payment Due: {fmtDateShort(state.dueDate)}</div>
+                        <div className="inv3-line">Balance Due: {fmt(balanceDue, cur)}</div>
+                      </>
+                    )}
                   </td>
                 </tr>
               </tbody>
@@ -175,8 +193,12 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
                         <tr><td>Subtotal</td><td>{fmt(subtotal, cur)}</td></tr>
                         <tr><td>Discount</td><td>{fmt(discount, cur)}</td></tr>
                         <tr className="inv3-total-row"><td>Total</td><td>{fmt(total, cur)}</td></tr>
-                        <tr><td>Paid Amount</td><td>{fmt(paid, cur)}</td></tr>
-                        <tr className="inv3-balance-row"><td>Balance Due</td><td>{fmt(balanceDue, cur)}</td></tr>
+                        {!estimate && (
+                          <>
+                            <tr><td>Paid Amount</td><td>{fmt(paid, cur)}</td></tr>
+                            <tr className="inv3-balance-row"><td>Balance Due</td><td>{fmt(balanceDue, cur)}</td></tr>
+                          </>
+                        )}
                       </tbody>
                     </table>
                   </td>
@@ -190,33 +212,35 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
 
             <table className="inv3-block">
               <tbody>
-                <tr>
-                  <td className="inv3-footer-box">
-                    <div className="inv3-footer-title">Bank Details:</div>
-                    {bankLines.length > 0
-                      ? bankLines.map((line, i) => <div key={i} className="inv3-line">{line}</div>)
-                      : <div className="inv3-line">—</div>}
-                  </td>
-                  <td className="inv3-footer-box inv3-upi-box">
-                    <div className="inv3-footer-title">Pay using UPI:</div>
-                    <div className="inv3-upi-content">
-                      <img className="inv3-upi-qr" src={upiQrDataUrl} alt="UPI payment QR code" />
-                      <div className="inv3-upi-meta">
-                        <div className="inv3-line">UPI ID: {upiId}</div>
-                        <div className="inv3-line">Payee: {upiPayeeName}</div>
-                        <div className="inv3-line">Amount: {fmt(balanceDue, cur)}</div>
+                {!estimate && (
+                  <tr>
+                    <td className="inv3-footer-box">
+                      <div className="inv3-footer-title">Bank Details:</div>
+                      {bankLines.length > 0
+                        ? bankLines.map((line, i) => <div key={i} className="inv3-line">{line}</div>)
+                        : <div className="inv3-line">—</div>}
+                    </td>
+                    <td className="inv3-footer-box inv3-upi-box">
+                      <div className="inv3-footer-title">Pay using UPI:</div>
+                      <div className="inv3-upi-content">
+                        <img className="inv3-upi-qr" src={upiQrDataUrl} alt="UPI payment QR code" />
+                        <div className="inv3-upi-meta">
+                          <div className="inv3-line">UPI ID: {upiId}</div>
+                          <div className="inv3-line">Payee: {upiPayeeName}</div>
+                          <div className="inv3-line">Amount: {fmt(upiAmount, cur)}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                )}
                 <tr>
-                  <td className="inv3-footer-box">
+                  <td className="inv3-footer-box" colSpan={estimate ? 2 : 1}>
                     <div className="inv3-footer-title">Notes:</div>
                     {noteLines.length > 0
                       ? noteLines.map((line, i) => <div key={i} className="inv3-line">{line}</div>)
                       : <div className="inv3-line">—</div>}
                   </td>
-                  <td className="inv3-footer-box" />
+                  {!estimate && <td className="inv3-footer-box" />}
                 </tr>
                 <tr>
                   <td className="inv3-footer-box inv3-terms-cell" colSpan={2}>

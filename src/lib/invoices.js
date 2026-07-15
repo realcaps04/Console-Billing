@@ -16,6 +16,7 @@ function mapRowToBill(row) {
   return {
     id: row.id,
     invoiceNumber: row.invoice_number,
+    documentType: row.document_type || 'invoice',
     status: row.status,
     issueDate: row.issue_date,
     dueDate: row.due_date,
@@ -53,11 +54,13 @@ function mapStateToRow(state) {
     derived.discountType,
     derived.discountValue,
   )
-  const paid = Math.max(0, roundMoney(derived.amountPaid))
-  const balanceDue = Math.max(0, roundMoney(total - paid))
+  const isEstimate = (derived.documentType || 'invoice') === 'estimate'
+  const paid = isEstimate ? 0 : Math.max(0, roundMoney(derived.amountPaid))
+  const balanceDue = isEstimate ? 0 : Math.max(0, roundMoney(total - paid))
 
   return {
     invoice_number: derived.invoiceNumber,
+    document_type: derived.documentType || 'invoice',
     status: derived.status,
     issue_date: derived.issueDate,
     due_date: derived.dueDate,
@@ -73,10 +76,10 @@ function mapStateToRow(state) {
     amount_paid: paid,
     discount_type: derived.discountType,
     discount_value: Number(derived.discountValue) || 0,
-    payment_mode: derived.paymentMode,
-    upi_id: derived.upiId,
-    upi_payee_name: derived.upiPayeeName,
-    bank_details: derived.bankDetails,
+    payment_mode: isEstimate ? '' : derived.paymentMode,
+    upi_id: isEstimate ? '' : derived.upiId,
+    upi_payee_name: isEstimate ? '' : derived.upiPayeeName,
+    bank_details: isEstimate ? '' : derived.bankDetails,
     extra_notes: derived.extraNotes,
     terms: derived.terms,
     items: derived.items,

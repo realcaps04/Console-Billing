@@ -4,6 +4,7 @@
 create table if not exists public.invoices (
   id uuid primary key default gen_random_uuid(),
   invoice_number text not null unique,
+  document_type text not null default 'invoice',
   status text not null default 'unpaid',
   issue_date date,
   due_date date,
@@ -66,3 +67,9 @@ create policy "Allow anon delete invoices"
 
 -- Ensure anon can delete (needed in some projects even with RLS policies)
 grant select, insert, update, delete on table public.invoices to anon, authenticated;
+
+-- Migration: add document_type for invoices vs estimates (run if table already exists)
+alter table public.invoices
+  add column if not exists document_type text not null default 'invoice';
+
+create index if not exists invoices_document_type_idx on public.invoices (document_type);

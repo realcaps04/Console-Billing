@@ -346,7 +346,8 @@ body {
 }
 
 .bills-refresh-btn,
-.bills-primary-btn {
+.bills-primary-btn,
+.bills-secondary-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -388,9 +389,51 @@ body {
   background: #1d4ed8;
 }
 
+.bills-secondary-btn {
+  border: 1px solid #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.bills-secondary-btn:hover {
+  background: #dbeafe;
+  border-color: #60a5fa;
+}
+
+.bills-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: center;
+}
+
+.doc-type-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.doc-type-invoice {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.doc-type-estimate {
+  background: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
 .bills-stats {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.85rem;
   margin-bottom: 1.35rem;
 }

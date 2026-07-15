@@ -7,10 +7,9 @@ function getClientName(bill) {
   return String(bill.toCompany || bill.clientName || '').trim()
 }
 
-function matchesClientSearch(bill, query) {
-  if (!query) return true
-  const name = getClientName(bill).toLowerCase()
-  return name.includes(query.toLowerCase())
+function getBillStatus(bill) {
+  if (isEstimate(bill)) return 'draft'
+  return derivePaymentStatus(bill.total, bill.amountPaid)
 }
 
 function itemSummary(bill) {
@@ -20,6 +19,40 @@ function itemSummary(bill) {
   if (!count) return 'No line items'
   if (count === 1) return first || '1 item'
   return `${count} items${first ? ` · ${first}` : ''}`
+}
+
+function matchesSearch(bill, query) {
+  if (!query) return true
+  const q = query.toLowerCase()
+  const status = getBillStatus(bill)
+  const type = isEstimate(bill) ? 'estimate' : 'invoice'
+  const haystack = [
+    getClientName(bill),
+    bill.invoiceNumber || '',
+    type,
+    paymentStatusLabel(status),
+    status.replace('_', ' '),
+    itemSummary(bill),
+    String(bill.total ?? ''),
+    String(bill.balanceDue ?? ''),
+    bill.toEmail || '',
+    bill.toPhone || '',
+  ]
+    .join(' ')
+    .toLowerCase()
+
+  return haystack.includes(q)
+}
+
+function matchesFilters(bill, { query, typeFilter, statusFilter }) {
+  if (!matchesSearch(bill, query)) return false
+
+  if (typeFilter === 'invoice' && isEstimate(bill)) return false
+  if (typeFilter === 'estimate' && !isEstimate(bill)) return false
+
+  if (statusFilter !== 'all' && getBillStatus(bill) !== statusFilter) return false
+
+  return true
 }
 
 function IconEdit() {
@@ -67,8 +100,6 @@ export default function PreviousBills({
   bills = [],
   loading = false,
   error = null,
-  onNewInvoice,
-  onNewEstimate,
   onRefresh,
   onEditBill,
   onDeleteBill,
@@ -78,11 +109,22 @@ export default function PreviousBills({
   autoLoad = false,
 }) {
   const loadedRef = useRef(false)
-  const [clientSearch, setClientSearch] = useState('')
-  const searchQuery = clientSearch.trim()
+  const [searchText, setSearchText] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const searchQuery = searchText.trim()
+  const hasActiveFilters = Boolean(searchQuery) || typeFilter !== 'all' || statusFilter !== 'all'
 
-  const filteredBills = bills.filter((bill) => matchesClientSearch(bill, searchQuery))
+  const filteredBills = bills.filter((bill) =>
+    matchesFilters(bill, { query: searchQuery, typeFilter, statusFilter }),
+  )
   const visibleBills = filteredBills.slice(0, MAX_BILLS)
+
+  const clearFilters = () => {
+    setSearchText('')
+    setTypeFilter('all')
+    setStatusFilter('all')
+  }
 
   useEffect(() => {
     if (!autoLoad || loadedRef.current) return
@@ -124,22 +166,55 @@ export default function PreviousBills({
               <input
                 type="search"
                 className="bills-search-input"
-                value={clientSearch}
-                onChange={(e) => setClientSearch(e.target.value)}
-                placeholder="Search by client name…"
-                aria-label="Search by client name"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="Search client, number, details…"
+                aria-label="Search bills"
               />
-              {clientSearch && (
+              {searchText && (
                 <button
                   type="button"
                   className="bills-search-clear"
-                  onClick={() => setClientSearch('')}
+                  onClick={() => setSearchText('')}
                   aria-label="Clear search"
                 >
                   ×
                 </button>
               )}
             </label>
+            <label className="bills-filter">
+              <span className="bills-filter-label">Type</span>
+              <select
+                className="bills-filter-select"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                aria-label="Filter by type"
+              >
+                <option value="all">All types</option>
+                <option value="invoice">Invoice</option>
+                <option value="estimate">Estimate</option>
+              </select>
+            </label>
+            <label className="bills-filter">
+              <span className="bills-filter-label">Status</span>
+              <select
+                className="bills-filter-select"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                aria-label="Filter by status"
+              >
+                <option value="all">All statuses</option>
+                <option value="unpaid">Unpaid</option>
+                <option value="partially_paid">Partial</option>
+                <option value="paid">Paid</option>
+                <option value="draft">Draft</option>
+              </select>
+            </label>
+            {hasActiveFilters && (
+              <button type="button" className="bills-filter-clear" onClick={clearFilters}>
+                Clear filters
+              </button>
+            )}
           </div>
           <div className="bills-header-actions">
             {onRefresh && (
@@ -151,50 +226,32 @@ export default function PreviousBills({
                 {loading ? 'Refreshing…' : 'Refresh'}
               </button>
             )}
-            <button type="button" className="bills-primary-btn" onClick={onNewInvoice}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              New Invoice
-            </button>
-            {onNewEstimate && (
-              <button type="button" className="bills-secondary-btn" onClick={onNewEstimate}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <path d="M9 15h6" />
-                  <path d="M9 11h6" />
-                </svg>
-                New Estimate
-              </button>
-            )}
           </div>
         </div>
 
         {showStats && (
           <div className={`bills-stats${loading ? ' bills-stats-refreshing' : ''}`}>
-            <div className="bills-stat-card">
+            <div className="bills-stat-card bills-stat-documents">
               <span className="bills-stat-label">Documents</span>
               <strong className="bills-stat-value">{visibleBills.length}</strong>
             </div>
-            <div className="bills-stat-card">
+            <div className="bills-stat-card bills-stat-estimates">
               <span className="bills-stat-label">Estimates</span>
               <strong className="bills-stat-value">{estimateCount}</strong>
             </div>
-            <div className="bills-stat-card">
+            <div className="bills-stat-card bills-stat-unpaid">
               <span className="bills-stat-label">Unpaid</span>
               <strong className="bills-stat-value">{unpaidCount}</strong>
             </div>
-            <div className="bills-stat-card">
+            <div className="bills-stat-card bills-stat-partial">
               <span className="bills-stat-label">Partial</span>
               <strong className="bills-stat-value">{partialCount}</strong>
             </div>
-            <div className="bills-stat-card">
+            <div className="bills-stat-card bills-stat-paid">
               <span className="bills-stat-label">Paid</span>
               <strong className="bills-stat-value">{paidCount}</strong>
             </div>
-            <div className="bills-stat-card">
+            <div className="bills-stat-card bills-stat-outstanding">
               <span className="bills-stat-label">Outstanding</span>
               <strong className="bills-stat-value bills-stat-money">{fmt(totalOutstanding)}</strong>
             </div>
@@ -234,18 +291,8 @@ export default function PreviousBills({
             </div>
             <h2 className="bills-state-title">No bills saved yet</h2>
             <p className="bills-state-copy">
-              Create an invoice or estimate, then use <strong>Save Invoice</strong> or <strong>Save Estimate</strong> on the left panel to store it here.
+              Use <strong>New Invoice</strong> or <strong>New Estimate</strong> in the header, then save to store it here.
             </p>
-            <div className="bills-state-actions">
-              <button type="button" className="bills-primary-btn" onClick={onNewInvoice}>
-                Create your first invoice
-              </button>
-              {onNewEstimate && (
-                <button type="button" className="bills-secondary-btn" onClick={onNewEstimate}>
-                  Create your first estimate
-                </button>
-              )}
-            </div>
           </div>
         )}
 
@@ -257,12 +304,14 @@ export default function PreviousBills({
                 <line x1="16.5" y1="16.5" x2="21" y2="21" />
               </svg>
             </div>
-            <h2 className="bills-state-title">No matching clients</h2>
+            <h2 className="bills-state-title">No matching bills</h2>
             <p className="bills-state-copy">
-              No bills found for <strong>{searchQuery}</strong>. Try a different client name.
+              {searchQuery
+                ? <>No bills match <strong>{searchQuery}</strong> with the selected filters.</>
+                : 'No bills match the selected filters.'}
             </p>
-            <button type="button" className="bills-primary-btn" onClick={() => setClientSearch('')}>
-              Clear search
+            <button type="button" className="bills-primary-btn" onClick={clearFilters}>
+              Clear filters
             </button>
           </div>
         )}
@@ -294,7 +343,10 @@ export default function PreviousBills({
                   return (
                     <tr key={rowId}>
                       <td className="bills-col-invoice">
-                        <div className="bills-invoice-cell">
+                        <div
+                          className="bills-invoice-cell"
+                          title={`${estimate ? 'Estimate' : 'Invoice'} ${bill.invoiceNumber || '—'}`}
+                        >
                           <span className={`doc-type-badge doc-type-${estimate ? 'estimate' : 'invoice'}`}>
                             {estimate ? 'Estimate' : 'Invoice'}
                           </span>
@@ -302,14 +354,14 @@ export default function PreviousBills({
                         </div>
                       </td>
                       <td className="bills-col-client">
-                        <div className="bills-client-cell">
-                          <span className="bills-client">{bill.toCompany || bill.clientName || 'Untitled client'}</span>
-                          {bill.toEmail && <span className="bills-row-meta">{bill.toEmail}</span>}
-                          {bill.toPhone && <span className="bills-row-meta">{bill.toPhone}</span>}
-                        </div>
+                        <span className="bills-client" title={bill.toCompany || bill.clientName || 'Untitled client'}>
+                          {bill.toCompany || bill.clientName || 'Untitled client'}
+                        </span>
                       </td>
                       <td className="bills-col-details">
-                        <span className="bills-row-detail">{itemSummary(bill)}</span>
+                        <span className="bills-row-detail" title={itemSummary(bill)}>
+                          {itemSummary(bill)}
+                        </span>
                       </td>
                       <td className="bills-col-total">
                         <span className="bills-mono">{fmt(total, bill.currency || '₹')}</span>
@@ -379,7 +431,7 @@ export default function PreviousBills({
             </table>
             <div className="bills-table-footer">
               <span className="bills-table-count">
-                {searchQuery
+                {hasActiveFilters
                   ? `Showing ${visibleBills.length} of ${filteredBills.length} match${filteredBills.length === 1 ? '' : 'es'}`
                   : `Showing ${visibleBills.length} of max ${MAX_BILLS}`}
               </span>

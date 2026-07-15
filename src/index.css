@@ -221,16 +221,20 @@ body {
 .bills-toolbar-left {
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
   flex: 1;
+  flex-wrap: wrap;
 }
 
 .bills-search {
   position: relative;
   display: flex;
   align-items: center;
+  width: min(280px, 100%);
   max-width: 320px;
+  flex: 1 1 220px;
 }
 
 .bills-search-icon {
@@ -279,6 +283,62 @@ body {
 .bills-search-clear:hover {
   background: #f1f5f9;
   color: var(--text2);
+}
+
+.bills-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.bills-filter-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text3);
+  white-space: nowrap;
+}
+
+.bills-filter-select {
+  height: 38px;
+  min-width: 132px;
+  padding: 0 2rem 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 0.7rem center;
+  appearance: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.bills-filter-select:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.bills-filter-clear {
+  height: 38px;
+  padding: 0 0.85rem;
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.bills-filter-clear:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
 }
 
 .bills-table-count {
@@ -453,6 +513,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  border-left-width: 3px;
 }
 
 .bills-stat-label {
@@ -477,6 +538,54 @@ body {
   font-family: 'JetBrains Mono', monospace;
   font-size: 1.05rem;
 }
+
+.bills-stat-documents {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  border-left-color: #2563eb;
+}
+.bills-stat-documents .bills-stat-label { color: #1d4ed8; }
+.bills-stat-documents .bills-stat-value { color: #1e40af; }
+
+.bills-stat-estimates {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  border-left-color: #7c3aed;
+}
+.bills-stat-estimates .bills-stat-label { color: #6d28d9; }
+.bills-stat-estimates .bills-stat-value { color: #5b21b6; }
+
+.bills-stat-unpaid {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  border-left-color: #ea580c;
+}
+.bills-stat-unpaid .bills-stat-label { color: #c2410c; }
+.bills-stat-unpaid .bills-stat-value { color: #9a3412; }
+
+.bills-stat-partial {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  border-left-color: #3b82f6;
+}
+.bills-stat-partial .bills-stat-label { color: #1d4ed8; }
+.bills-stat-partial .bills-stat-value { color: #1e40af; }
+
+.bills-stat-paid {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  border-left-color: #059669;
+}
+.bills-stat-paid .bills-stat-label { color: #047857; }
+.bills-stat-paid .bills-stat-value { color: #065f46; }
+
+.bills-stat-outstanding {
+  background: #f0fdfa;
+  border-color: #99f6e4;
+  border-left-color: #0d9488;
+}
+.bills-stat-outstanding .bills-stat-label { color: #0f766e; }
+.bills-stat-outstanding .bills-stat-value { color: #115e59; }
 
 .bills-state-card {
   border: 1px solid var(--border);
@@ -582,13 +691,18 @@ body {
   vertical-align: middle;
 }
 
-.bills-col-invoice { width: 18%; }
+.bills-col-invoice { width: 18%; max-width: 0; }
 .bills-col-client { width: 16%; }
-.bills-col-details { width: 14%; }
+.bills-col-details { width: 14%; max-width: 0; }
 .bills-col-total { width: 11%; }
 .bills-col-balance { width: 11%; }
 .bills-col-status { width: 10%; }
 .bills-col-actions { width: 14%; }
+
+.bills-table .bills-col-invoice,
+.bills-table .bills-col-details {
+  overflow: hidden;
+}
 
 .bills-table .bills-col-total,
 .bills-table .bills-col-balance {
@@ -615,16 +729,29 @@ body {
   background: #f8fbff;
 }
 
-.bills-invoice-cell,
-.bills-client-cell {
+.bills-invoice-cell {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.bills-invoice-cell .doc-type-badge {
+  flex-shrink: 0;
 }
 
 .bills-invoice-no {
+  display: block;
+  min-width: 0;
   font-size: 0.78rem;
   color: #1d4ed8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bills-row-meta {
@@ -634,9 +761,14 @@ body {
 }
 
 .bills-row-detail {
+  display: block;
+  max-width: 100%;
   font-size: 0.78rem;
   color: var(--text2);
   line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bills-client {
@@ -821,6 +953,19 @@ body {
   .bills-toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+  .bills-toolbar-left {
+    width: 100%;
+  }
+  .bills-search {
+    max-width: none;
+    flex: 1 1 100%;
+  }
+  .bills-filter {
+    flex: 1 1 auto;
+  }
+  .bills-filter-select {
+    width: 100%;
   }
   .bills-header-actions {
     justify-content: flex-start;

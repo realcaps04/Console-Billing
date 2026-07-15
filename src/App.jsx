@@ -400,8 +400,6 @@ export default function App() {
           bills={previousBills}
           loading={billsLoading}
           error={billsError}
-          onNewInvoice={startNewInvoice}
-          onNewEstimate={startNewEstimate}
           onRefresh={loadBills}
           onEditBill={openBill}
           onDeleteBill={requestDeleteBill}

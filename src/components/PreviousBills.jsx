@@ -102,6 +102,11 @@ export default function PreviousBills({
     return acc + balance
   }, 0)
 
+  const hasBills = bills.length > 0
+  const initialLoading = loading && !hasBills
+  const showStats = !error && visibleBills.length > 0
+  const showTable = !error && visibleBills.length > 0
+
   return (
     <section className="bills-panel">
       <div className="bills-shell">
@@ -152,8 +157,8 @@ export default function PreviousBills({
           </div>
         </div>
 
-        {!loading && !error && visibleBills.length > 0 && (
-          <div className="bills-stats">
+        {showStats && (
+          <div className={`bills-stats${loading ? ' bills-stats-refreshing' : ''}`}>
             <div className="bills-stat-card">
               <span className="bills-stat-label">Total invoices</span>
               <strong className="bills-stat-value">{visibleBills.length}</strong>
@@ -177,7 +182,7 @@ export default function PreviousBills({
           </div>
         )}
 
-        {loading && (
+        {initialLoading && (
           <div className="bills-state-card">
             <div className="bills-spinner" aria-hidden="true" />
             <h2 className="bills-state-title">Loading invoices</h2>
@@ -236,7 +241,7 @@ export default function PreviousBills({
           </div>
         )}
 
-        {!loading && !error && visibleBills.length > 0 && (
+        {showTable && (
           <div className="bills-table-wrap">
             <table className="bills-table">
               <thead>

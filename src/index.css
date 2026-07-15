@@ -173,10 +173,6 @@ body {
 @keyframes app-nav-spin {
   to { transform: rotate(360deg); }
 }
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-}
 
 .app-nav-link:hover {
   color: #1d4ed8;
@@ -397,6 +393,11 @@ body {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.85rem;
   margin-bottom: 1.35rem;
+}
+
+.bills-stats-refreshing {
+  opacity: 0.85;
+  transition: opacity 0.15s;
 }
 
 .bills-stat-card {

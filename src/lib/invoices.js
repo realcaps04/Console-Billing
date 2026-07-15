@@ -4,7 +4,9 @@ import { computeTotalsWithDiscount } from '../utils'
 function requireSupabase() {
   if (!isSupabaseConfigured || !supabase) {
     throw new Error(
-      'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env, then restart npm run dev.',
+      import.meta.env.PROD
+        ? 'Supabase is not configured on this deploy. In Vercel → Project → Settings → Environment Variables, add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then Redeploy.'
+        : 'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env, then restart npm run dev.',
     )
   }
   return supabase

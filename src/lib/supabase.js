@@ -10,9 +10,11 @@ export const isSupabaseConfigured = Boolean(
   !supabaseUrl.includes('your-project-ref'),
 )
 
-if (!isSupabaseConfigured && import.meta.env.DEV) {
+if (!isSupabaseConfigured) {
   console.warn(
-    'Supabase env vars missing. Put VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env at the project root, then restart npm run dev.',
+    import.meta.env.PROD
+      ? 'Supabase env vars missing at build time. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel Environment Variables, then Redeploy.'
+      : 'Supabase env vars missing. Put VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env at the project root, then restart npm run dev.',
   )
 }
 

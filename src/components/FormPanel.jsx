@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   computeTotalsWithDiscount,
   sanitizeInvoiceNumber,
@@ -7,6 +8,8 @@ import {
   hasContactValidationErrors,
   isEstimate,
 } from '../utils'
+import { fetchServiceItems, updateServiceItemRate } from '../lib/serviceItems'
+import SearchableServiceSelect from './SearchableServiceSelect'
 
 function SectionLabel({ children }) {
   return <div className="section-label">{children}</div>
@@ -29,15 +32,23 @@ function addDays(dateStr, days) {
   return d.toISOString().split('T')[0]
 }
 
-function LineItem({ item, onUpdate, onRemove }) {
+function LineItem({ item, services, onUpdate, onRemove, onRatePersist }) {
   const amount = (Number(item.qty) || 0) * (Number(item.rate) || 0)
+
+  const handleSelect = (service) => {
+    onUpdate(item.id, {
+      desc: service.description,
+      rate: service.rate ?? 0,
+    })
+  }
+
   return (
     <div className="item-row">
-      <input
-        type="text"
+      <SearchableServiceSelect
         value={item.desc}
-        placeholder="e.g. Web Development Service"
-        onChange={e => onUpdate(item.id, 'desc', e.target.value)}
+        services={services}
+        onSelect={handleSelect}
+        placeholder="Search service…"
       />
       <input
         type="number"
@@ -50,6 +61,9 @@ function LineItem({ item, onUpdate, onRemove }) {
         value={item.rate}
         min="0"
         onChange={e => onUpdate(item.id, 'rate', e.target.value)}
+        onBlur={() => {
+          if (item.desc) onRatePersist?.(item.desc, item.rate)
+        }}
       />
       <div className="amount-display">{Number(amount).toLocaleString('en-IN')}</div>
       <button className="btn-remove" onClick={() => onRemove(item.id)} title="Remove item">×</button>
@@ -65,6 +79,31 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
   const balance = Math.max(0, total - paid)
   const errors = getContactValidationErrors(state)
   const canSave = !hasContactValidationErrors(state)
+  const [services, setServices] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    fetchServiceItems()
+      .then((rows) => {
+        if (!cancelled) setServices(rows)
+      })
+      .catch((e) => {
+        console.error(e)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  const persistRate = async (description, rate) => {
+    const updated = await updateServiceItemRate(description, rate)
+    if (!updated) return
+    setServices((prev) =>
+      prev.map((s) =>
+        s.description.toLowerCase() === updated.description.toLowerCase()
+          ? { ...s, rate: updated.rate }
+          : s,
+      ),
+    )
+  }
 
   return (
     <aside className="sidebar">
@@ -203,7 +242,14 @@ export default function FormPanel({ state, update, updateItem, addItem, removeIt
             <span></span>
           </div>
           {state.items.map(item => (
-            <LineItem key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} />
+            <LineItem
+              key={item.id}
+              item={item}
+              services={services}
+              onUpdate={updateItem}
+              onRemove={removeItem}
+              onRatePersist={persistRate}
+            />
           ))}
           <button className="btn-add-item" onClick={addItem}>
             ＋ Add Line Item

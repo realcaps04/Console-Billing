@@ -5,6 +5,7 @@ import DeleteConfirmModal from './components/DeleteConfirmModal'
 import FormPanel from './components/FormPanel'
 import InvoicePreview from './components/InvoicePreview'
 import PreviousBills from './components/PreviousBills'
+import ServicesManager from './components/ServicesManager'
 import { hasContactValidationErrors, generateInvoiceNumber, generateEstimateNumber, computeTotalsWithDiscount, withDerivedPaymentFields } from './utils'
 import { fetchInvoices, saveInvoice, deleteInvoice } from './lib/invoices'
 import { downloadInvoicePdf } from './lib/pdf'
@@ -13,10 +14,10 @@ const VIEW_STORAGE_KEY = 'consolebilling_active_view'
 
 function getInitialView() {
   const hash = window.location.hash.replace('#', '')
-  if (hash === 'create' || hash === 'estimate' || hash === 'bills') return hash
+  if (hash === 'create' || hash === 'estimate' || hash === 'bills' || hash === 'services') return hash
   try {
     const stored = sessionStorage.getItem(VIEW_STORAGE_KEY)
-    if (stored === 'create' || stored === 'estimate' || stored === 'bills') return stored
+    if (stored === 'create' || stored === 'estimate' || stored === 'bills' || stored === 'services') return stored
   } catch {
     // ignore
   }
@@ -204,11 +205,17 @@ export default function App() {
     })
   }, [])
 
-  const updateItem = useCallback((id, key, value) => {
+  const updateItem = useCallback((id, keyOrPatch, value) => {
     setState((prev) =>
       withDerivedPaymentFields({
         ...prev,
-        items: prev.items.map((it) => (it.id === id ? { ...it, [key]: value } : it)),
+        items: prev.items.map((it) => {
+          if (it.id !== id) return it
+          if (typeof keyOrPatch === 'object' && keyOrPatch !== null) {
+            return { ...it, ...keyOrPatch }
+          }
+          return { ...it, [keyOrPatch]: value }
+        }),
       }),
     )
   }, [])
@@ -395,6 +402,8 @@ export default function App() {
           />
           <InvoicePreview ref={previewRef} state={state} />
         </div>
+      ) : view === 'services' ? (
+        <ServicesManager autoLoad />
       ) : (
         <PreviousBills
           bills={previousBills}

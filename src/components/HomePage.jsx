@@ -15,17 +15,18 @@ const MODULES = [
     ),
   },
   {
-    id: 'clients',
-    title: 'Clients',
-    description: 'Store client profiles, contacts, and billing preferences in one place.',
-    status: 'soon',
+    id: 'resume',
+    title: 'Resume Builder',
+    description: 'Fill your details by category, preview a clean resume layout, and download a polished PDF.',
+    status: 'available',
     accent: 'clients',
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 00-3-3.87" />
-        <path d="M16 3.13a4 4 0 010 7.75" />
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="8" y1="13" x2="16" y2="13" />
+        <line x1="8" y1="17" x2="12" y2="17" />
+        <circle cx="9" cy="8.5" r="1.2" />
       </svg>
     ),
   },
@@ -83,7 +84,7 @@ const MODULES = [
   },
 ]
 
-export default function HomePage({ onOpenBilling }) {
+export default function HomePage({ onOpenModule }) {
   return (
     <section className="home-panel">
       <div className="home-shell">
@@ -91,7 +92,7 @@ export default function HomePage({ onOpenBilling }) {
           <p className="home-kicker">Console Projects</p>
           <h1 className="home-title">Choose a workspace</h1>
           <p className="home-subtitle">
-            Start with Console Billing now. More modules will open here as they are built.
+            Open Console Billing or Resume Builder. More modules will appear here as they are built.
           </p>
         </header>
 
@@ -104,7 +105,7 @@ export default function HomePage({ onOpenBilling }) {
                 key={mod.id}
                 type={available ? 'button' : undefined}
                 className={`home-card home-card-${mod.accent}${available ? ' home-card-available' : ' home-card-soon'}`}
-                onClick={available ? onOpenBilling : undefined}
+                onClick={available ? () => onOpenModule?.(mod.id) : undefined}
                 aria-disabled={!available}
               >
                 <div className="home-card-top">

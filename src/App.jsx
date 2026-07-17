@@ -7,6 +7,7 @@ import InvoicePreview from './components/InvoicePreview'
 import PreviousBills from './components/PreviousBills'
 import ServicesManager from './components/ServicesManager'
 import HomePage from './components/HomePage'
+import ResumeBuilder from './components/ResumeBuilder'
 import { hasContactValidationErrors, generateInvoiceNumber, generateEstimateNumber, computeTotalsWithDiscount, withDerivedPaymentFields } from './utils'
 import { fetchInvoices, saveInvoice, deleteInvoice } from './lib/invoices'
 import { downloadInvoicePdf, viewInvoicePdf } from './lib/pdf'
@@ -15,10 +16,24 @@ const VIEW_STORAGE_KEY = 'consolebilling_active_view'
 
 function getInitialView() {
   const hash = window.location.hash.replace('#', '')
-  if (hash === 'home' || hash === 'create' || hash === 'estimate' || hash === 'bills' || hash === 'services') return hash
+  if (
+    hash === 'home' ||
+    hash === 'create' ||
+    hash === 'estimate' ||
+    hash === 'bills' ||
+    hash === 'services' ||
+    hash === 'resume'
+  ) return hash
   try {
     const stored = sessionStorage.getItem(VIEW_STORAGE_KEY)
-    if (stored === 'home' || stored === 'create' || stored === 'estimate' || stored === 'bills' || stored === 'services') return stored
+    if (
+      stored === 'home' ||
+      stored === 'create' ||
+      stored === 'estimate' ||
+      stored === 'bills' ||
+      stored === 'services' ||
+      stored === 'resume'
+    ) return stored
   } catch {
     // ignore
   }
@@ -415,11 +430,18 @@ export default function App() {
         downloading={downloading}
         onDownload={downloadPDF}
         showDownload={view === 'create' || view === 'estimate'}
-        showBillingNav={view !== 'home'}
+        showBillingNav={view !== 'home' && view !== 'resume'}
       />
 
       {view === 'home' ? (
-        <HomePage onOpenBilling={startNewInvoice} />
+        <HomePage
+          onOpenModule={(moduleId) => {
+            if (moduleId === 'billing') startNewInvoice()
+            else if (moduleId === 'resume') navigate('resume')
+          }}
+        />
+      ) : view === 'resume' ? (
+        <ResumeBuilder />
       ) : view === 'create' || view === 'estimate' ? (
         <div className="app-layout">
           <FormPanel

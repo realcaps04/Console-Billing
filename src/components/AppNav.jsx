@@ -18,7 +18,9 @@ export default function AppNav({
         <img className="app-nav-logo" src="/favicon.svg" alt="" />
         <div>
           <div className="app-nav-name">Console Projects</div>
-          <div className="app-nav-sub">{showBillingNav ? 'Billing' : 'Workspace'}</div>
+          <div className="app-nav-sub">
+            {showBillingNav ? 'Billing' : activeView === 'resume' ? 'Resume' : 'Workspace'}
+          </div>
         </div>
       </button>
 

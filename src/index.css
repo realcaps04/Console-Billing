@@ -712,7 +712,7 @@ body {
 .bills-col-details { width: 13%; max-width: 0; }
 .bills-col-total { width: 10%; }
 .bills-col-balance { width: 10%; }
-.bills-col-status { width: 10%; }
+.bills-col-status { width: 12%; }
 .bills-col-actions { width: 18%; }
 
 .bills-table .bills-col-invoice,
@@ -730,6 +730,14 @@ body {
 .bills-table .bills-col-status {
   text-align: center;
   vertical-align: middle;
+  white-space: nowrap;
+}
+
+.bills-table .status-badge {
+  white-space: nowrap;
+  margin-top: 0;
+  letter-spacing: 0.04em;
+  padding: 0.28rem 0.6rem;
 }
 
 .bills-table .bills-col-actions {
@@ -2109,6 +2117,19 @@ body {
   max-width: 440px;
   transform: translate(-50%, -50%) rotate(-18deg);
   opacity: 0.22;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+.inv3-estimate-watermark {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  z-index: 3;
+  width: 52%;
+  max-width: 400px;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  opacity: 0.2;
   pointer-events: none;
   mix-blend-mode: multiply;
 }

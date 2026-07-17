@@ -81,6 +81,14 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
               aria-hidden="true"
             />
           )}
+          {estimate && (
+            <img
+              className="inv3-estimate-watermark"
+              src="/estimate-stamp.png"
+              alt=""
+              aria-hidden="true"
+            />
+          )}
           <div className="inv3">
             <div className="inv3-title">{docTitle}</div>
 

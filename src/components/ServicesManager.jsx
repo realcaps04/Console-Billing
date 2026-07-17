@@ -3,9 +3,11 @@ import { fmt } from '../utils'
 import {
   createServiceItem,
   deleteServiceItem,
+  deleteServiceItems,
   fetchServiceItems,
   updateServiceItem,
 } from '../lib/serviceItems'
+import DeleteConfirmModal from './DeleteConfirmModal'
 
 const EMPTY_FORM = {
   description: '',
@@ -41,6 +43,10 @@ export default function ServicesManager({ autoLoad = false }) {
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [rateFilter, setRateFilter] = useState('all')
+  const [minRate, setMinRate] = useState('')
+  const [maxRate, setMaxRate] = useState('')
+  const [sortBy, setSortBy] = useState('name_asc')
   const [formOpen, setFormOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
@@ -48,6 +54,9 @@ export default function ServicesManager({ autoLoad = false }) {
   const [formError, setFormError] = useState('')
   const [busyId, setBusyId] = useState(null)
   const [notice, setNotice] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteConfirming, setDeleteConfirming] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
 
   const loadServices = useCallback(async () => {
     setLoading(true)
@@ -86,12 +95,63 @@ export default function ServicesManager({ autoLoad = false }) {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return services.filter((s) => {
+    const min = minRate === '' ? null : Number(minRate)
+    const max = maxRate === '' ? null : Number(maxRate)
+
+    let rows = services.filter((s) => {
       if (categoryFilter !== 'all' && (s.category || '') !== categoryFilter) return false
+
+      const rate = Number(s.rate) || 0
+      if (rateFilter === 'zero' && rate !== 0) return false
+      if (rateFilter === 'priced' && rate <= 0) return false
+      if (min !== null && !Number.isNaN(min) && rate < min) return false
+      if (max !== null && !Number.isNaN(max) && rate > max) return false
+
       if (!q) return true
       return `${s.description} ${s.category}`.toLowerCase().includes(q)
     })
-  }, [services, search, categoryFilter])
+
+    rows = [...rows].sort((a, b) => {
+      const rateA = Number(a.rate) || 0
+      const rateB = Number(b.rate) || 0
+      const nameA = (a.description || '').toLowerCase()
+      const nameB = (b.description || '').toLowerCase()
+      if (sortBy === 'name_desc') return nameB.localeCompare(nameA)
+      if (sortBy === 'rate_asc') return rateA - rateB || nameA.localeCompare(nameB)
+      if (sortBy === 'rate_desc') return rateB - rateA || nameA.localeCompare(nameB)
+      return nameA.localeCompare(nameB)
+    })
+
+    return rows
+  }, [services, search, categoryFilter, rateFilter, minRate, maxRate, sortBy])
+
+  const clearFilters = () => {
+    setSearch('')
+    setCategoryFilter('all')
+    setRateFilter('all')
+    setMinRate('')
+    setMaxRate('')
+    setSortBy('name_asc')
+  }
+
+  const filteredIds = useMemo(() => filtered.map((s) => s.id), [filtered])
+  const selectedCount = selectedIds.length
+  const allFilteredSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedIds.includes(id))
+  const someFilteredSelected = filteredIds.some((id) => selectedIds.includes(id))
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    )
+  }
+
+  const toggleSelectAllFiltered = () => {
+    if (allFilteredSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !filteredIds.includes(id)))
+      return
+    }
+    setSelectedIds((prev) => [...new Set([...prev, ...filteredIds])])
+  }
 
   const closeForm = () => {
     if (saving) return
@@ -159,25 +219,56 @@ export default function ServicesManager({ autoLoad = false }) {
     }
   }
 
-  const onDelete = async (service) => {
-    const ok = window.confirm(`Delete service “${service.description}”?`)
-    if (!ok) return
-    setBusyId(service.id)
+  const requestDelete = (service) => {
+    setDeleteTarget({ type: 'single', service })
+  }
+
+  const requestBulkDelete = () => {
+    if (!selectedIds.length) return
+    setDeleteTarget({ type: 'bulk', ids: [...selectedIds] })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    setDeleteConfirming(true)
     try {
-      await deleteServiceItem(service.id)
-      setServices((prev) => prev.filter((s) => s.id !== service.id))
-      if (editingId === service.id) closeForm()
-      setNotice('Service deleted.')
+      if (deleteTarget.type === 'bulk') {
+        const ids = deleteTarget.ids
+        setBusyId('bulk')
+        await deleteServiceItems(ids)
+        setServices((prev) => prev.filter((s) => !ids.includes(s.id)))
+        setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)))
+        if (editingId && ids.includes(editingId)) closeForm()
+        setNotice(`${ids.length} service${ids.length === 1 ? '' : 's'} deleted.`)
+      } else {
+        const service = deleteTarget.service
+        setBusyId(service.id)
+        await deleteServiceItem(service.id)
+        setServices((prev) => prev.filter((s) => s.id !== service.id))
+        setSelectedIds((prev) => prev.filter((id) => id !== service.id))
+        if (editingId === service.id) closeForm()
+        setNotice('Service deleted.')
+      }
+      setDeleteTarget(null)
     } catch (err) {
       console.error(err)
       alert(err?.message || 'Failed to delete service')
     } finally {
+      setDeleteConfirming(false)
       setBusyId(null)
     }
   }
 
-  const hasFilters = Boolean(search.trim()) || categoryFilter !== 'all'
-  const pricedCount = services.filter((s) => Number(s.rate) > 0).length
+  const deleteModalLabel = deleteTarget?.type === 'bulk'
+    ? `${deleteTarget.ids.length} selected service${deleteTarget.ids.length === 1 ? '' : 's'}`
+    : deleteTarget?.service?.description
+
+  const hasFilters = Boolean(search.trim())
+    || categoryFilter !== 'all'
+    || rateFilter !== 'all'
+    || minRate !== ''
+    || maxRate !== ''
+    || sortBy !== 'name_asc'
 
   return (
     <section className="bills-panel services-panel">
@@ -203,27 +294,6 @@ export default function ServicesManager({ autoLoad = false }) {
 
         {notice && <div className="services-toast">{notice}</div>}
 
-        {!error && (
-          <div className="bills-stats services-stats">
-            <div className="bills-stat-card bills-stat-documents">
-              <span className="bills-stat-label">Total services</span>
-              <strong className="bills-stat-value">{services.length}</strong>
-            </div>
-            <div className="bills-stat-card bills-stat-estimates">
-              <span className="bills-stat-label">Categories</span>
-              <strong className="bills-stat-value">{categories.length}</strong>
-            </div>
-            <div className="bills-stat-card bills-stat-paid">
-              <span className="bills-stat-label">With rate</span>
-              <strong className="bills-stat-value">{pricedCount}</strong>
-            </div>
-            <div className="bills-stat-card bills-stat-unpaid">
-              <span className="bills-stat-label">Zero rate</span>
-              <strong className="bills-stat-value">{services.length - pricedCount}</strong>
-            </div>
-          </div>
-        )}
-
         <div className="bills-toolbar services-toolbar">
           <div className="bills-toolbar-left">
             <label className="bills-search">
@@ -236,8 +306,8 @@ export default function ServicesManager({ autoLoad = false }) {
                 className="bills-search-input"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search services…"
-                aria-label="Search services"
+                placeholder="Search by name…"
+                aria-label="Search by name"
               />
               {search && (
                 <button
@@ -264,17 +334,88 @@ export default function ServicesManager({ autoLoad = false }) {
                 ))}
               </select>
             </label>
+            <label className="bills-filter">
+              <span className="bills-filter-label">Rate</span>
+              <select
+                className="bills-filter-select"
+                value={rateFilter}
+                onChange={(e) => setRateFilter(e.target.value)}
+                aria-label="Filter by rate"
+              >
+                <option value="all">All rates</option>
+                <option value="priced">With rate</option>
+                <option value="zero">Zero rate</option>
+              </select>
+            </label>
+            <label className="bills-filter services-rate-range">
+              <span className="bills-filter-label">Min ₹</span>
+              <input
+                type="number"
+                className="services-rate-input"
+                min="0"
+                step="0.01"
+                value={minRate}
+                onChange={(e) => setMinRate(e.target.value)}
+                placeholder="0"
+                aria-label="Minimum rate"
+              />
+            </label>
+            <label className="bills-filter services-rate-range">
+              <span className="bills-filter-label">Max ₹</span>
+              <input
+                type="number"
+                className="services-rate-input"
+                min="0"
+                step="0.01"
+                value={maxRate}
+                onChange={(e) => setMaxRate(e.target.value)}
+                placeholder="Any"
+                aria-label="Maximum rate"
+              />
+            </label>
+            <label className="bills-filter">
+              <span className="bills-filter-label">Sort</span>
+              <select
+                className="bills-filter-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                aria-label="Sort services"
+              >
+                <option value="name_asc">Name A–Z</option>
+                <option value="name_desc">Name Z–A</option>
+                <option value="rate_asc">Rate low–high</option>
+                <option value="rate_desc">Rate high–low</option>
+              </select>
+            </label>
             {hasFilters && (
               <button
                 type="button"
                 className="bills-filter-clear"
-                onClick={() => {
-                  setSearch('')
-                  setCategoryFilter('all')
-                }}
+                onClick={clearFilters}
               >
                 Clear filters
               </button>
+            )}
+            {selectedCount > 0 && (
+              <>
+                <span className="services-selected-count">{selectedCount} selected</span>
+                <button
+                  type="button"
+                  className="bills-filter-clear"
+                  onClick={requestBulkDelete}
+                  disabled={busyId === 'bulk'}
+                >
+                  Delete selected
+                </button>
+                <button
+                  type="button"
+                  className="bills-refresh-btn"
+                  onClick={() => setSelectedIds([])}
+                  disabled={deleteConfirming}
+                >
+                  Clear selection
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -319,6 +460,18 @@ export default function ServicesManager({ autoLoad = false }) {
             <table className="bills-table services-table">
               <thead>
                 <tr>
+                  <th className="services-col-check">
+                    <input
+                      type="checkbox"
+                      className="services-check"
+                      checked={allFilteredSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected
+                      }}
+                      onChange={toggleSelectAllFiltered}
+                      aria-label="Select all visible services"
+                    />
+                  </th>
                   <th className="services-col-desc">Description</th>
                   <th className="services-col-category">Category</th>
                   <th className="services-col-rate">Rate</th>
@@ -327,9 +480,19 @@ export default function ServicesManager({ autoLoad = false }) {
               </thead>
               <tbody>
                 {filtered.map((service) => {
-                  const busy = busyId === service.id
+                  const busy = busyId === service.id || busyId === 'bulk'
+                  const checked = selectedIds.includes(service.id)
                   return (
-                    <tr key={service.id}>
+                    <tr key={service.id} className={checked ? 'services-row-selected' : undefined}>
+                      <td className="services-col-check">
+                        <input
+                          type="checkbox"
+                          className="services-check"
+                          checked={checked}
+                          onChange={() => toggleSelect(service.id)}
+                          aria-label={`Select ${service.description}`}
+                        />
+                      </td>
                       <td className="services-col-desc">
                         <span className="services-desc" title={service.description}>{service.description}</span>
                       </td>
@@ -354,7 +517,7 @@ export default function ServicesManager({ autoLoad = false }) {
                           <button
                             type="button"
                             className="bills-action-btn bills-action-delete"
-                            onClick={() => onDelete(service)}
+                            onClick={() => requestDelete(service)}
                             disabled={busy}
                             title="Delete"
                             aria-label="Delete"
@@ -454,6 +617,24 @@ export default function ServicesManager({ autoLoad = false }) {
           </div>
         </div>
       )}
+
+      <DeleteConfirmModal
+        key={
+          deleteTarget?.type === 'bulk'
+            ? `bulk-${deleteTarget.ids.join('-')}`
+            : deleteTarget?.service?.id || 'service-delete'
+        }
+        open={Boolean(deleteTarget)}
+        title={deleteTarget?.type === 'bulk' ? 'Delete services' : 'Delete service'}
+        messagePrefix="Enter password to permanently delete"
+        itemLabel={deleteModalLabel}
+        confirming={deleteConfirming}
+        onCancel={() => {
+          if (deleteConfirming) return
+          setDeleteTarget(null)
+        }}
+        onConfirm={confirmDelete}
+      />
     </section>
   )
 }

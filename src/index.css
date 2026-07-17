@@ -2468,7 +2468,7 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 1rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
 }
 
 .services-header-actions {
@@ -2581,11 +2581,58 @@ body {
 }
 
 .services-toolbar {
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
-.services-col-desc { width: 46%; }
-.services-col-category { width: 28%; }
+.services-rate-input {
+  width: 88px;
+  height: 38px;
+  padding: 0 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.services-rate-input:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.services-rate-range .bills-filter-label {
+  min-width: 2.5rem;
+}
+
+.services-col-check {
+  width: 40px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.services-check {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.services-selected-count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1d4ed8;
+  white-space: nowrap;
+}
+
+.services-row-selected {
+  background: #eff6ff !important;
+}
+
+.services-col-desc { width: 44%; }
+.services-col-category { width: 26%; }
 .services-col-rate { width: 14%; text-align: right; }
 .services-col-actions { width: 12%; text-align: right; }
 

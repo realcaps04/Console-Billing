@@ -2,10 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 
 const DELETE_PASSWORD = '3455'
 
-export default function DeleteConfirmModal({ open, invoiceLabel, confirming = false, onCancel, onConfirm }) {
+export default function DeleteConfirmModal({
+  open,
+  invoiceLabel,
+  itemLabel,
+  title = 'Delete invoice',
+  messagePrefix = 'Enter password to permanently delete',
+  confirming = false,
+  onCancel,
+  onConfirm,
+}) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const inputRef = useRef(null)
+  const label = itemLabel || invoiceLabel
 
   useEffect(() => {
     if (!open) return undefined
@@ -34,10 +44,10 @@ export default function DeleteConfirmModal({ open, invoiceLabel, confirming = fa
         aria-labelledby="delete-modal-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="delete-modal-title" className="app-modal-title">Delete invoice</h3>
+        <h3 id="delete-modal-title" className="app-modal-title">{title}</h3>
         <p className="app-modal-message">
-          Enter password to permanently delete{' '}
-          <strong>{invoiceLabel || 'this invoice'}</strong>.
+          {messagePrefix}{' '}
+          <strong>{label || 'this item'}</strong>.
         </p>
         <form className="delete-confirm-form" onSubmit={handleSubmit}>
           <input

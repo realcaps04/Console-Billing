@@ -190,6 +190,31 @@ export async function deleteServiceItem(id) {
   return true
 }
 
+export async function deleteServiceItems(ids = []) {
+  const client = requireSupabase()
+  const uniqueIds = [...new Set((ids || []).filter(Boolean))]
+  if (!uniqueIds.length) throw new Error('No services selected.')
+
+  const { data, error } = await client
+    .from('service_items')
+    .delete()
+    .in('id', uniqueIds)
+    .select('id')
+
+  if (error) {
+    if (tableMissingError(error)) {
+      throw new Error('Services table not found. Run supabase/service_items.sql in the Supabase SQL Editor.')
+    }
+    throw error
+  }
+
+  if (!data?.length) {
+    throw new Error('Services were not deleted. Check delete permissions in Supabase.')
+  }
+
+  return data.map((row) => row.id)
+}
+
 /** Persist rate for an existing catalog description (no-op if table missing). */
 export async function updateServiceItemRate(description, rate) {
   if (!isSupabaseConfigured || !supabase) return null

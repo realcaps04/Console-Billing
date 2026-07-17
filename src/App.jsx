@@ -6,6 +6,7 @@ import FormPanel from './components/FormPanel'
 import InvoicePreview from './components/InvoicePreview'
 import PreviousBills from './components/PreviousBills'
 import ServicesManager from './components/ServicesManager'
+import HomePage from './components/HomePage'
 import { hasContactValidationErrors, generateInvoiceNumber, generateEstimateNumber, computeTotalsWithDiscount, withDerivedPaymentFields } from './utils'
 import { fetchInvoices, saveInvoice, deleteInvoice } from './lib/invoices'
 import { downloadInvoicePdf } from './lib/pdf'
@@ -14,14 +15,14 @@ const VIEW_STORAGE_KEY = 'consolebilling_active_view'
 
 function getInitialView() {
   const hash = window.location.hash.replace('#', '')
-  if (hash === 'create' || hash === 'estimate' || hash === 'bills' || hash === 'services') return hash
+  if (hash === 'home' || hash === 'create' || hash === 'estimate' || hash === 'bills' || hash === 'services') return hash
   try {
     const stored = sessionStorage.getItem(VIEW_STORAGE_KEY)
-    if (stored === 'create' || stored === 'estimate' || stored === 'bills' || stored === 'services') return stored
+    if (stored === 'home' || stored === 'create' || stored === 'estimate' || stored === 'bills' || stored === 'services') return stored
   } catch {
     // ignore
   }
-  return 'create'
+  return 'home'
 }
 
 function persistView(nextView) {
@@ -380,16 +381,20 @@ export default function App() {
       <AppNav
         activeView={view}
         onNavigate={(nextView) => {
-          if (nextView === 'create') startNewInvoice()
+          if (nextView === 'home') navigate('home')
+          else if (nextView === 'create') startNewInvoice()
           else if (nextView === 'estimate') startNewEstimate()
           else navigate(nextView)
         }}
         downloading={downloading}
         onDownload={downloadPDF}
         showDownload={view === 'create' || view === 'estimate'}
+        showBillingNav={view !== 'home'}
       />
 
-      {view === 'create' || view === 'estimate' ? (
+      {view === 'home' ? (
+        <HomePage onOpenBilling={startNewInvoice} />
+      ) : view === 'create' || view === 'estimate' ? (
         <div className="app-layout">
           <FormPanel
             state={state}

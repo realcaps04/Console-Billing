@@ -1,15 +1,28 @@
-export default function AppNav({ activeView, onNavigate, downloading, onDownload, showDownload = false }) {
+export default function AppNav({
+  activeView,
+  onNavigate,
+  downloading,
+  onDownload,
+  showDownload = false,
+  showBillingNav = true,
+}) {
   return (
     <header className="app-nav">
-      <div className="app-nav-brand">
-        <img className="app-nav-logo" src="/favicon.svg" alt="Console Projects" />
+      <button
+        type="button"
+        className="app-nav-brand"
+        onClick={() => onNavigate('home')}
+        title="Home"
+        aria-label="Console Projects home"
+      >
+        <img className="app-nav-logo" src="/favicon.svg" alt="" />
         <div>
           <div className="app-nav-name">Console Projects</div>
-          <div className="app-nav-sub">Billing</div>
+          <div className="app-nav-sub">{showBillingNav ? 'Billing' : 'Workspace'}</div>
         </div>
-      </div>
+      </button>
 
-      <div className="app-nav-right">
+      {showBillingNav ? (
         <nav className="app-nav-links" aria-label="Main">
           <button
             type="button"
@@ -71,7 +84,11 @@ export default function AppNav({ activeView, onNavigate, downloading, onDownload
             <span className="app-nav-btn-label">Services</span>
           </button>
         </nav>
+      ) : (
+        <div className="app-nav-center-spacer" aria-hidden="true" />
+      )}
 
+      <div className="app-nav-right">
         {showDownload && (
           <button
             type="button"

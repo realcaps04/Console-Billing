@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import PasswordUnlockModal from './PasswordUnlockModal'
+
 const MODULES = [
   {
     id: 'billing',
@@ -5,6 +8,7 @@ const MODULES = [
     description: 'Create invoices and estimates, manage previous bills, and maintain your service catalog.',
     status: 'available',
     accent: 'billing',
+    requiresPassword: true,
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
@@ -85,6 +89,16 @@ const MODULES = [
 ]
 
 export default function HomePage({ onOpenModule }) {
+  const [unlockTarget, setUnlockTarget] = useState(null)
+
+  const handleModuleClick = (mod) => {
+    if (mod.requiresPassword) {
+      setUnlockTarget(mod)
+      return
+    }
+    onOpenModule?.(mod.id)
+  }
+
   return (
     <section className="home-panel">
       <div className="home-shell">
@@ -105,7 +119,7 @@ export default function HomePage({ onOpenModule }) {
                 key={mod.id}
                 type={available ? 'button' : undefined}
                 className={`home-card home-card-${mod.accent}${available ? ' home-card-available' : ' home-card-soon'}`}
-                onClick={available ? () => onOpenModule?.(mod.id) : undefined}
+                onClick={available ? () => handleModuleClick(mod) : undefined}
                 aria-disabled={!available}
               >
                 <div className="home-card-top">
@@ -130,6 +144,20 @@ export default function HomePage({ onOpenModule }) {
           })}
         </div>
       </div>
+
+      <PasswordUnlockModal
+        key={unlockTarget?.id || 'billing-unlock'}
+        open={Boolean(unlockTarget)}
+        title={`Open ${unlockTarget?.title || 'workspace'}`}
+        message={`Enter password to open ${unlockTarget?.title || 'this workspace'}.`}
+        confirmLabel="Enter workspace"
+        onCancel={() => setUnlockTarget(null)}
+        onConfirm={() => {
+          const id = unlockTarget?.id
+          setUnlockTarget(null)
+          if (id) onOpenModule?.(id)
+        }}
+      />
     </section>
   )
 }

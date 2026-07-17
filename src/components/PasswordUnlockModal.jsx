@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { APP_ACCESS_PASSWORD } from './PasswordUnlockModal'
 
-export default function DeleteConfirmModal({
+export const APP_ACCESS_PASSWORD = '3455'
+
+export default function PasswordUnlockModal({
   open,
-  invoiceLabel,
-  itemLabel,
-  title = 'Delete invoice',
-  messagePrefix = 'Enter password to permanently delete',
+  title = 'Enter password',
+  message = 'Enter password to continue.',
+  confirmLabel = 'Continue',
   confirming = false,
   onCancel,
   onConfirm,
@@ -14,7 +14,6 @@ export default function DeleteConfirmModal({
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const inputRef = useRef(null)
-  const label = itemLabel || invoiceLabel
 
   useEffect(() => {
     if (!open) return undefined
@@ -40,14 +39,11 @@ export default function DeleteConfirmModal({
         className="app-modal delete-confirm-modal"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="delete-modal-title"
+        aria-labelledby="unlock-modal-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="delete-modal-title" className="app-modal-title">{title}</h3>
-        <p className="app-modal-message">
-          {messagePrefix}{' '}
-          <strong>{label || 'this item'}</strong>.
-        </p>
+        <h3 id="unlock-modal-title" className="app-modal-title">{title}</h3>
+        <p className="app-modal-message">{message}</p>
         <form className="delete-confirm-form" onSubmit={handleSubmit}>
           <input
             ref={inputRef}
@@ -74,10 +70,10 @@ export default function DeleteConfirmModal({
             </button>
             <button
               type="submit"
-              className="app-modal-btn app-modal-btn-danger"
+              className="app-modal-btn"
               disabled={confirming || !password}
             >
-              {confirming ? 'Deleting…' : 'Delete'}
+              {confirming ? 'Opening…' : confirmLabel}
             </button>
           </div>
         </form>

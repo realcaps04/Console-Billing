@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import ResumePreview from './ResumePreview'
-import DeleteConfirmModal from './DeleteConfirmModal'
 import PasswordUnlockModal from './PasswordUnlockModal'
 import SetResumePasswordModal from './SetResumePasswordModal'
 import {
@@ -155,9 +154,8 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
   const [showErrors, setShowErrors] = useState(false)
   const [importingPdf, setImportingPdf] = useState(false)
   const [importFileName, setImportFileName] = useState('')
-  const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteConfirming, setDeleteConfirming] = useState(false)
-  const [editUnlockTarget, setEditUnlockTarget] = useState(null)
+  const [unlockRequest, setUnlockRequest] = useState(null)
   const [setPasswordOpen, setSetPasswordOpen] = useState(false)
 
   const isDirty = useMemo(
@@ -359,23 +357,46 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
     setPage('builder')
   }
 
+  const requestProtectedAction = (resume, action) => {
+    if (!resume?.id) {
+      if (action === 'edit') requestNewResume()
+      return
+    }
+    if (action === 'edit' && page === 'builder' && isDirty && !confirmDiscardChanges()) return
+    setUnlockRequest({ resume, action })
+  }
+
   const requestNewResume = () => {
     if (page === 'builder' && !confirmDiscardChanges()) return
     setSetPasswordOpen(true)
   }
 
-  const requestEditResume = (resume) => {
-    if (!resume?.id) {
-      requestNewResume()
-      return
-    }
-    if (page === 'builder' && isDirty && !confirmDiscardChanges()) return
-    setEditUnlockTarget(resume)
+  const openBuilderFromList = (resume) => {
+    if (resume?.id) requestProtectedAction(resume, 'edit')
+    else requestNewResume()
   }
 
-  const openBuilderFromList = (resume) => {
-    if (resume?.id) requestEditResume(resume)
-    else requestNewResume()
+  const unlockActionCopy = {
+    view: {
+      title: 'Unlock to view PDF',
+      message: 'Enter this resume\'s password to view the PDF.',
+      confirmLabel: 'View PDF',
+    },
+    download: {
+      title: 'Unlock to download PDF',
+      message: 'Enter this resume\'s password to download the PDF.',
+      confirmLabel: 'Download PDF',
+    },
+    edit: {
+      title: 'Unlock to edit',
+      message: 'Enter this resume\'s password to open it for editing.',
+      confirmLabel: 'Edit resume',
+    },
+    delete: {
+      title: 'Unlock to delete',
+      message: 'Enter this resume\'s password to permanently delete it.',
+      confirmLabel: 'Delete resume',
+    },
   }
 
   const onImportPdf = async (file) => {
@@ -515,13 +536,12 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
     }
   }
 
-  const confirmDelete = async () => {
-    if (!deleteTarget) return
+  const confirmDelete = async (resume) => {
+    if (!resume?.id) return
     setDeleteConfirming(true)
     try {
-      await deleteResume(deleteTarget.id)
-      if (state.id === deleteTarget.id) onReset()
-      setDeleteTarget(null)
+      await deleteResume(resume.id)
+      if (state.id === resume.id) onReset()
       setNotice('Resume deleted.')
       await loadResumes()
     } catch (e) {
@@ -530,6 +550,17 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
     } finally {
       setDeleteConfirming(false)
     }
+  }
+
+  const handleUnlockConfirm = () => {
+    const request = unlockRequest
+    setUnlockRequest(null)
+    if (!request?.resume) return
+    const { resume, action } = request
+    if (action === 'view') void runLibraryPdf(resume, 'view')
+    else if (action === 'download') void runLibraryPdf(resume, 'download')
+    else if (action === 'edit') openBuilder(resume)
+    else if (action === 'delete') void confirmDelete(resume)
   }
 
   return (
@@ -727,15 +758,15 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
                           <td>
                             <span className="bills-mono">{formatUpdated(row.updatedAt)}</span>
                           </td>
-                          <td className="bills-col-actions">
-                            <div className="bills-actions">
+                          <td className="bills-col-actions bills-actions-cell">
+                            <div className="bills-row-actions resume-row-actions">
                               <button
                                 type="button"
                                 className="bills-action-btn"
                                 title="View PDF"
                                 aria-label="View PDF"
-                                disabled={Boolean(busyResumeId)}
-                                onClick={() => runLibraryPdf(row, 'view')}
+                                disabled={Boolean(busyResumeId) || deleteConfirming}
+                                onClick={() => requestProtectedAction(row, 'view')}
                               >
                                 {busyView ? '…' : <IconView />}
                               </button>
@@ -744,8 +775,8 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
                                 className="bills-action-btn"
                                 title="Download PDF"
                                 aria-label="Download PDF"
-                                disabled={Boolean(busyResumeId)}
-                                onClick={() => runLibraryPdf(row, 'download')}
+                                disabled={Boolean(busyResumeId) || deleteConfirming}
+                                onClick={() => requestProtectedAction(row, 'download')}
                               >
                                 {busyDownload ? '…' : <IconPdf />}
                               </button>
@@ -754,7 +785,8 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
                                 className="bills-action-btn bills-action-edit"
                                 title="Edit"
                                 aria-label="Edit"
-                                onClick={() => openBuilderFromList(row)}
+                                disabled={deleteConfirming}
+                                onClick={() => requestProtectedAction(row, 'edit')}
                               >
                                 <IconEdit />
                               </button>
@@ -763,7 +795,8 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
                                 className="bills-action-btn bills-action-delete"
                                 title="Delete"
                                 aria-label="Delete"
-                                onClick={() => setDeleteTarget(row)}
+                                disabled={deleteConfirming}
+                                onClick={() => requestProtectedAction(row, 'delete')}
                               >
                                 <IconDelete />
                               </button>
@@ -1185,40 +1218,22 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
         </div>
       )}
 
-      <DeleteConfirmModal
-        key={deleteTarget?.id || 'resume-delete'}
-        open={Boolean(deleteTarget)}
-        title="Delete resume"
-        messagePrefix="Enter password to permanently delete"
-        itemLabel={deleteTarget?.fullName || 'this resume'}
-        confirming={deleteConfirming}
-        onCancel={() => {
-          if (deleteConfirming) return
-          setDeleteTarget(null)
-        }}
-        onConfirm={confirmDelete}
-      />
-
       <PasswordUnlockModal
-        key={editUnlockTarget?.id || 'resume-edit-unlock'}
-        open={Boolean(editUnlockTarget)}
-        title="Unlock resume for editing"
-        message={`Enter the edit password for ${editUnlockTarget?.fullName || 'this resume'}.`}
-        confirmLabel="Edit resume"
-        expectedPassword={getResumeEditPassword(editUnlockTarget)}
-        onCancel={() => setEditUnlockTarget(null)}
-        onConfirm={() => {
-          const target = editUnlockTarget
-          setEditUnlockTarget(null)
-          if (target) openBuilder(target)
-        }}
+        key={`${unlockRequest?.resume?.id || 'none'}-${unlockRequest?.action || 'idle'}`}
+        open={Boolean(unlockRequest)}
+        title={unlockActionCopy[unlockRequest?.action]?.title || 'Enter password'}
+        message={unlockActionCopy[unlockRequest?.action]?.message || 'Enter this resume\'s password to continue.'}
+        confirmLabel={unlockActionCopy[unlockRequest?.action]?.confirmLabel || 'Continue'}
+        expectedPassword={getResumeEditPassword(unlockRequest?.resume)}
+        onCancel={() => setUnlockRequest(null)}
+        onConfirm={handleUnlockConfirm}
       />
 
       <SetResumePasswordModal
         key={setPasswordOpen ? 'set-password-open' : 'set-password-closed'}
         open={setPasswordOpen}
         title="Set edit password"
-        message="Choose a password for this new resume. You will need the same password later to edit it."
+        message="Choose a password for this new resume. You will need the same password later to open, edit, or manage it."
         confirmLabel="Start resume"
         onCancel={() => setSetPasswordOpen(false)}
         onConfirm={(password) => {

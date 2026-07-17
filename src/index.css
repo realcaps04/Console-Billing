@@ -3688,6 +3688,15 @@ body {
   border-radius: 0;
 }
 
+.resume-library-panel .resume-row-actions {
+  gap: 0.65rem;
+}
+
+.resume-library-panel .bills-col-actions {
+  width: 20%;
+  min-width: 11.5rem;
+}
+
 .resume-name-link {
   border: none;
   background: none;

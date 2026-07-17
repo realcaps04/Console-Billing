@@ -151,6 +151,7 @@ export default function App() {
   const [downloading, setDownloading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [resumeHeaderActions, setResumeHeaderActions] = useState(null)
+  const [resumeHasUnsaved, setResumeHasUnsaved] = useState(false)
   const [previousBills, setPreviousBills] = useState([])
   const [billsLoading, setBillsLoading] = useState(false)
   const [billsError, setBillsError] = useState(null)
@@ -208,10 +209,13 @@ export default function App() {
   }, [])
 
   const navigate = useCallback((nextView) => {
+    if (view === 'resume' && nextView !== 'resume' && resumeHasUnsaved) {
+      if (!window.confirm('You have unsaved resume changes. Leave without saving?')) return
+    }
     setView(nextView)
     persistView(nextView)
     if (nextView === 'bills') loadBills()
-  }, [loadBills])
+  }, [loadBills, view, resumeHasUnsaved])
 
   const update = useCallback((key, value) => {
     setState((prev) => {
@@ -443,7 +447,10 @@ export default function App() {
           }}
         />
       ) : view === 'resume' ? (
-        <ResumeBuilder onHeaderActions={setResumeHeaderActions} />
+        <ResumeBuilder
+          onHeaderActions={setResumeHeaderActions}
+          onUnsavedChanges={setResumeHasUnsaved}
+        />
       ) : view === 'create' || view === 'estimate' ? (
         <div className="app-layout">
           <FormPanel

@@ -295,6 +295,52 @@ export function createEmptyResume() {
   }
 }
 
+/** Stable JSON snapshot for unsaved-change detection. */
+export function serializeResumeForCompare(state) {
+  const experience = (Array.isArray(state?.experience) ? state.experience : []).map((item) => ({
+    id: item.id,
+    company: trim(item.company),
+    role: trim(item.role),
+    dateMode: getExperienceDateMode(item),
+    startDate: trim(item.startDate),
+    endDate: trim(item.endDate),
+    current: Boolean(item.current),
+    details: trim(item.details),
+  }))
+  const education = (Array.isArray(state?.education) ? state.education : []).map((item) => ({
+    id: item.id,
+    school: trim(item.school),
+    degree: trim(item.degree),
+    year: trim(item.year),
+    details: trim(item.details),
+  }))
+  const projects = (Array.isArray(state?.projects) ? state.projects : []).map((item) => ({
+    id: item.id,
+    name: trim(item.name),
+    link: trim(item.link),
+    details: trim(item.details),
+  }))
+
+  return JSON.stringify({
+    id: state?.id ?? null,
+    fullName: trim(state?.fullName),
+    email: trim(state?.email),
+    phone: trim(state?.phone),
+    location: trim(state?.location),
+    linkedin: trim(state?.linkedin),
+    portfolio: trim(state?.portfolio),
+    category: trim(state?.category) || 'IT',
+    headline: trim(state?.headline),
+    summary: trim(state?.summary),
+    skills: cleanList(state?.skills),
+    certifications: cleanList(state?.certifications),
+    languages: cleanList(state?.languages),
+    experience,
+    education,
+    projects,
+  })
+}
+
 function requireSupabase() {
   if (!isSupabaseConfigured || !supabase) {
     throw new Error(

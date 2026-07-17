@@ -11,6 +11,7 @@ import {
   RESUME_CATEGORIES,
   saveResume,
   getExperienceDateMode,
+  serializeResumeForCompare,
 } from '../lib/resumes'
 import { downloadResumePdf, viewResumePdf } from '../lib/pdf'
 import { parseResumePdfFile } from '../lib/parseResumePdf'
@@ -97,12 +98,13 @@ function IconDelete() {
   )
 }
 
-export default function ResumeBuilder({ onHeaderActions }) {
+export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
   const previewRef = useRef(null)
   const libraryPdfRef = useRef(null)
   const uploadInputRef = useRef(null)
   const [page, setPage] = useState('library')
   const [state, setState] = useState(createEmptyResume)
+  const [savedBaseline, setSavedBaseline] = useState(() => serializeResumeForCompare(createEmptyResume()))
   const [savedResumes, setSavedResumes] = useState([])
   const [listLoading, setListLoading] = useState(false)
   const [listError, setListError] = useState('')
@@ -119,6 +121,40 @@ export default function ResumeBuilder({ onHeaderActions }) {
   const [importFileName, setImportFileName] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteConfirming, setDeleteConfirming] = useState(false)
+
+  const isDirty = useMemo(
+    () => page === 'builder' && serializeResumeForCompare(state) !== savedBaseline,
+    [page, state, savedBaseline],
+  )
+
+  const markClean = useCallback((resume) => {
+    setSavedBaseline(serializeResumeForCompare(normalizeResume(resume)))
+  }, [])
+
+  const confirmDiscardChanges = useCallback(() => {
+    if (!isDirty) return true
+    return window.confirm('You have unsaved changes. Leave without saving?')
+  }, [isDirty])
+
+  useEffect(() => {
+    onUnsavedChanges?.(isDirty)
+    return () => onUnsavedChanges?.(false)
+  }, [isDirty, onUnsavedChanges])
+
+  useEffect(() => {
+    if (!isDirty) return undefined
+    const onBeforeUnload = (event) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [isDirty])
+
+  const goToLibrary = useCallback(() => {
+    if (!confirmDiscardChanges()) return
+    setPage('library')
+  }, [confirmDiscardChanges])
 
   const loadResumes = useCallback(async () => {
     setListLoading(true)
@@ -238,7 +274,9 @@ export default function ResumeBuilder({ onHeaderActions }) {
   }
 
   const onReset = () => {
-    setState(createEmptyResume())
+    const empty = createEmptyResume()
+    setState(empty)
+    markClean(empty)
     setNotice('')
     setError('')
     setShowErrors(false)
@@ -248,15 +286,23 @@ export default function ResumeBuilder({ onHeaderActions }) {
 
   const openBuilder = (resume = null) => {
     if (resume) {
-      setState(normalizeResume(resume))
+      const next = normalizeResume(resume)
+      setState(next)
+      markClean(next)
       setNotice(`Editing ${resume.fullName || 'resume'}`)
       setImportFileName('')
     } else {
+      if (page === 'builder' && !confirmDiscardChanges()) return
       onReset()
     }
     setError('')
     setShowErrors(false)
     setPage('builder')
+  }
+
+  const openBuilderFromList = (resume) => {
+    if (page === 'builder' && isDirty && !confirmDiscardChanges()) return
+    openBuilder(resume)
   }
 
   const onImportPdf = async (file) => {
@@ -298,8 +344,10 @@ export default function ResumeBuilder({ onHeaderActions }) {
     setSaving(true)
     try {
       const saved = await saveResume(state)
-      setState(normalizeResume(saved))
-      setNotice(state.id ? 'Resume updated.' : 'Resume created.')
+      const normalized = normalizeResume(saved)
+      setState(normalized)
+      markClean(normalized)
+      setNotice(saved.id ? 'Resume updated.' : 'Resume created.')
       await loadResumes()
     } catch (e) {
       console.error(e)
@@ -347,8 +395,11 @@ export default function ResumeBuilder({ onHeaderActions }) {
       onSave,
       onViewPdf,
       onDownload,
-      onNew: () => openBuilder(),
-      onSaved: () => setPage('library'),
+      onNew: () => {
+        if (page === 'builder' && !confirmDiscardChanges()) return
+        openBuilder()
+      },
+      onSaved: goToLibrary,
     }
   })
 
@@ -412,7 +463,7 @@ export default function ResumeBuilder({ onHeaderActions }) {
           role="tab"
           aria-selected={page === 'library'}
           className={`resume-subnav-btn${page === 'library' ? ' active' : ''}`}
-          onClick={() => setPage('library')}
+          onClick={goToLibrary}
         >
           Saved Resumes
         </button>
@@ -421,7 +472,10 @@ export default function ResumeBuilder({ onHeaderActions }) {
           role="tab"
           aria-selected={page === 'builder'}
           className={`resume-subnav-btn${page === 'builder' ? ' active' : ''}`}
-          onClick={() => openBuilder(state.id ? state : null)}
+          onClick={() => {
+            if (page === 'builder') return
+            openBuilder(state.id ? state : null)
+          }}
         >
           {state.id ? 'Edit Resume' : 'Create Resume'}
         </button>
@@ -472,7 +526,7 @@ export default function ResumeBuilder({ onHeaderActions }) {
                 <button type="button" className="bills-refresh-btn" onClick={loadResumes} disabled={listLoading}>
                   {listLoading ? 'Refreshing…' : 'Refresh'}
                 </button>
-                <button type="button" className="bills-primary-btn" onClick={() => openBuilder()}>
+                <button type="button" className="bills-primary-btn" onClick={() => openBuilderFromList()}>
                   New Resume
                 </button>
               </div>
@@ -536,7 +590,7 @@ export default function ResumeBuilder({ onHeaderActions }) {
                 </div>
                 <h2 className="bills-state-title">No resumes saved yet</h2>
                 <p className="bills-state-copy">Create a resume, save it, and it will appear here.</p>
-                <button type="button" className="bills-primary-btn" onClick={() => openBuilder()}>
+                <button type="button" className="bills-primary-btn" onClick={() => openBuilderFromList()}>
                   Create Resume
                 </button>
               </div>
@@ -572,7 +626,7 @@ export default function ResumeBuilder({ onHeaderActions }) {
                       return (
                         <tr key={row.id}>
                           <td>
-                            <button type="button" className="resume-name-link" onClick={() => openBuilder(row)}>
+                            <button type="button" className="resume-name-link" onClick={() => openBuilderFromList(row)}>
                               {row.fullName || 'Untitled'}
                             </button>
                           </td>
@@ -619,7 +673,7 @@ export default function ResumeBuilder({ onHeaderActions }) {
                                 className="bills-action-btn bills-action-edit"
                                 title="Edit"
                                 aria-label="Edit"
-                                onClick={() => openBuilder(row)}
+                                onClick={() => openBuilderFromList(row)}
                               >
                                 <IconEdit />
                               </button>
@@ -775,7 +829,6 @@ export default function ResumeBuilder({ onHeaderActions }) {
               <div className="resume-form-section">
                 <div className="resume-form-section-head">
                   <h3>Skills <span className="resume-req">*</span></h3>
-                  <button type="button" className="btn-add-item" onClick={() => addListItem('skills')}>＋ Add</button>
                 </div>
                 {sectionErr('skills') && <p className="field-error">{sectionErr('skills')}</p>}
                 {state.skills.map((skill, index) => (
@@ -791,12 +844,12 @@ export default function ResumeBuilder({ onHeaderActions }) {
                     {listErr('skills', index) && <span className="field-error resume-inline-error">{listErr('skills', index)}</span>}
                   </div>
                 ))}
+                <button type="button" className="btn-add-item resume-add-below" onClick={() => addListItem('skills')}>＋ Add skill</button>
               </div>
 
               <div className="resume-form-section">
                 <div className="resume-form-section-head">
                   <h3>Experience <span className="resume-req">*</span></h3>
-                  <button type="button" className="btn-add-item" onClick={addExperience}>＋ Add</button>
                 </div>
                 {sectionErr('experience') && <p className="field-error">{sectionErr('experience')}</p>}
                 {state.experience.map((item) => {
@@ -895,12 +948,12 @@ export default function ResumeBuilder({ onHeaderActions }) {
                   </div>
                   )
                 })}
+                <button type="button" className="btn-add-item resume-add-below" onClick={addExperience}>＋ Add experience</button>
               </div>
 
               <div className="resume-form-section">
                 <div className="resume-form-section-head">
                   <h3>Education <span className="resume-req">*</span></h3>
-                  <button type="button" className="btn-add-item" onClick={addEducation}>＋ Add</button>
                 </div>
                 {sectionErr('education') && <p className="field-error">{sectionErr('education')}</p>}
                 {state.education.map((item) => (
@@ -927,12 +980,12 @@ export default function ResumeBuilder({ onHeaderActions }) {
                     <button type="button" className="btn-remove resume-entry-remove" onClick={() => removeEntry('education', item.id)}>Remove</button>
                   </div>
                 ))}
+                <button type="button" className="btn-add-item resume-add-below" onClick={addEducation}>＋ Add education</button>
               </div>
 
               <div className="resume-form-section">
                 <div className="resume-form-section-head">
                   <h3>Projects</h3>
-                  <button type="button" className="btn-add-item" onClick={addProject}>＋ Add</button>
                 </div>
                 {state.projects.map((item) => (
                   <div key={item.id} className="resume-entry-card">
@@ -954,12 +1007,12 @@ export default function ResumeBuilder({ onHeaderActions }) {
                     <button type="button" className="btn-remove resume-entry-remove" onClick={() => removeEntry('projects', item.id)}>Remove</button>
                   </div>
                 ))}
+                <button type="button" className="btn-add-item resume-add-below" onClick={addProject}>＋ Add project</button>
               </div>
 
               <div className="resume-form-section">
                 <div className="resume-form-section-head">
                   <h3>Certifications</h3>
-                  <button type="button" className="btn-add-item" onClick={() => addListItem('certifications')}>＋ Add</button>
                 </div>
                 {state.certifications.map((item, index) => (
                   <div key={`cert-${index}`} className={`resume-inline-row${listErr('certifications', index) ? ' has-error' : ''}`}>
@@ -974,12 +1027,12 @@ export default function ResumeBuilder({ onHeaderActions }) {
                     {listErr('certifications', index) && <span className="field-error resume-inline-error">{listErr('certifications', index)}</span>}
                   </div>
                 ))}
+                <button type="button" className="btn-add-item resume-add-below" onClick={() => addListItem('certifications')}>＋ Add certification</button>
               </div>
 
               <div className="resume-form-section">
                 <div className="resume-form-section-head">
                   <h3>Languages <span className="resume-req">*</span></h3>
-                  <button type="button" className="btn-add-item" onClick={() => addListItem('languages')}>＋ Add</button>
                 </div>
                 {sectionErr('languages') && <p className="field-error">{sectionErr('languages')}</p>}
                 {state.languages.map((item, index) => (
@@ -995,6 +1048,7 @@ export default function ResumeBuilder({ onHeaderActions }) {
                     {listErr('languages', index) && <span className="field-error resume-inline-error">{listErr('languages', index)}</span>}
                   </div>
                 ))}
+                <button type="button" className="btn-add-item resume-add-below" onClick={() => addListItem('languages')}>＋ Add language</button>
               </div>
             </div>
           </aside>

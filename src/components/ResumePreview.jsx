@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import { getResumeDeclaration, formatExperienceDateRange } from '../lib/resumes'
+import { getResumeDeclaration, formatExperienceDateRange, formatLanguageLabel, normalizeLanguages } from '../lib/resumes'
 
 function Section({ title, children }) {
   if (!children) return null
@@ -18,7 +18,9 @@ function clean(list) {
 const ResumePreview = forwardRef(function ResumePreview({ state }, ref) {
   const skills = clean(state.skills)
   const certifications = clean(state.certifications)
-  const languages = clean(state.languages)
+  const languages = normalizeLanguages(state.languages)
+    .map(formatLanguageLabel)
+    .filter(Boolean)
   const experience = (state.experience || []).filter((e) => e.company || e.role || e.details)
   const education = (state.education || []).filter((e) => e.school || e.degree)
   const projects = (state.projects || []).filter((p) => p.name || p.details)

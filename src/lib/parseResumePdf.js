@@ -324,7 +324,13 @@ export function parseResumeText(rawText, { category = 'IT' } = {}) {
   const { fullName, headline } = guessNameAndHeadline(sections.header, contacts)
 
   const skills = parseListItems(sections.skills)
-  const languages = parseListItems(sections.languages)
+  const languages = parseListItems(sections.languages).map((name, index) => ({
+    id: Date.now() + 300 + index,
+    name,
+    read: true,
+    write: true,
+    speak: true,
+  }))
   const certifications = parseListItems(sections.certifications)
   const experience = parseExperienceBlocks(sections.experience)
   const education = parseEducationBlocks(sections.education)
@@ -344,7 +350,7 @@ export function parseResumeText(rawText, { category = 'IT' } = {}) {
     portfolio: contacts.portfolio,
     summary,
     skills: skills.length ? skills : [''],
-    languages: languages.length ? languages : [''],
+    languages: languages.length ? languages : createEmptyResume().languages,
     certifications: certifications.length ? certifications : [''],
     experience: experience.length ? experience : empty.experience,
     education: education.length ? education : empty.education,

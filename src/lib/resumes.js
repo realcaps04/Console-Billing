@@ -119,6 +119,62 @@ function entryHasContent(item, keys) {
   return keys.some((key) => trim(item?.[key]))
 }
 
+export function createEmptyLanguage(partial = {}) {
+  return {
+    id: partial.id || Date.now() + Math.floor(Math.random() * 1000),
+    name: String(partial.name || '').trim(),
+    read: Boolean(partial.read),
+    write: Boolean(partial.write),
+    speak: Boolean(partial.speak),
+  }
+}
+
+export function normalizeLanguageItem(item, index = 0) {
+  if (typeof item === 'string') {
+    return createEmptyLanguage({ id: Date.now() + index, name: item, read: true, write: true, speak: true })
+  }
+  if (item && typeof item === 'object') {
+    const hasAnyProficiency =
+      item.read !== undefined || item.write !== undefined || item.speak !== undefined
+    return createEmptyLanguage({
+      id: item.id || Date.now() + index,
+      name: item.name || item.language || '',
+      read: hasAnyProficiency ? Boolean(item.read) : true,
+      write: hasAnyProficiency ? Boolean(item.write) : true,
+      speak: hasAnyProficiency ? Boolean(item.speak) : true,
+    })
+  }
+  return createEmptyLanguage({ id: Date.now() + index })
+}
+
+export function normalizeLanguages(list) {
+  const rows = Array.isArray(list) ? list.map((item, index) => normalizeLanguageItem(item, index)) : []
+  return rows.length ? rows : [createEmptyLanguage()]
+}
+
+export function formatLanguageLabel(item) {
+  const lang = normalizeLanguageItem(item)
+  if (!lang.name) return ''
+  const skills = []
+  if (lang.read) skills.push('Read')
+  if (lang.write) skills.push('Write')
+  if (lang.speak) skills.push('Speak')
+  return skills.length ? `${lang.name} (${skills.join(', ')})` : lang.name
+}
+
+function cleanLanguages(list) {
+  return (Array.isArray(list) ? list : [])
+    .map((item, index) => normalizeLanguageItem(item, index))
+    .filter((item) => item.name)
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      read: Boolean(item.read),
+      write: Boolean(item.write),
+      speak: Boolean(item.speak),
+    }))
+}
+
 /**
  * Field-level validation for the resume builder.
  * Returns an object of error messages; empty string / missing key means valid.
@@ -235,16 +291,27 @@ export function getResumeValidationErrors(state) {
   })
 
   const languages = Array.isArray(state.languages) ? state.languages : []
-  const filledLanguages = languages.map((s) => trim(s)).filter(Boolean)
+  const filledLanguages = languages
+    .map((item) => normalizeLanguageItem(item))
+    .filter((item) => item.name)
   if (!filledLanguages.length) {
     errors.languages._section = 'Add at least one language.'
   }
-  languages.forEach((item, index) => {
-    if (languages.length === 1 && !trim(item)) {
-      errors.languages[index] = 'Language is required.'
-    } else if (trim(item) && trim(item).length < 2) {
-      errors.languages[index] = 'Enter a valid language.'
+  languages.forEach((raw, index) => {
+    const item = normalizeLanguageItem(raw, index)
+    const touched = Boolean(item.name) || filledLanguages.length === 0
+    if (!touched && filledLanguages.length) return
+    const row = {
+      name: !item.name
+        ? 'Language is required.'
+        : item.name.length < 2
+          ? 'Enter a valid language.'
+          : '',
+      skills: item.name && !item.read && !item.write && !item.speak
+        ? 'Select at least one: Read, Write, or Speak.'
+        : '',
     }
+    if (Object.values(row).some(Boolean)) errors.languages[index] = row
   })
 
   return errors
@@ -254,14 +321,16 @@ export function hasResumeValidationErrors(errors) {
   if (!errors) return false
   const topKeys = ['fullName', 'category', 'headline', 'email', 'phone', 'location', 'linkedin', 'portfolio', 'summary']
   if (topKeys.some((key) => errors[key])) return true
-  for (const section of ['skills', 'certifications', 'languages']) {
+  for (const section of ['skills', 'certifications']) {
     const bag = errors[section] || {}
     if (Object.values(bag).some(Boolean)) return true
   }
-  for (const section of ['experience', 'education', 'projects']) {
+  for (const section of ['experience', 'education', 'projects', 'languages']) {
     const bag = errors[section] || {}
     if (bag._section) return true
-    for (const row of Object.values(bag)) {
+    for (const [key, row] of Object.entries(bag)) {
+      if (key === '_section') continue
+      if (typeof row === 'string' && row) return true
       if (row && typeof row === 'object' && Object.values(row).some(Boolean)) return true
     }
   }
@@ -288,7 +357,7 @@ export function createEmptyResume() {
       { id: Date.now() + 1, school: '', degree: '', year: '', details: '' },
     ],
     certifications: [''],
-    languages: [''],
+    languages: [createEmptyLanguage()],
     projects: [
       { id: Date.now() + 2, name: '', link: '', details: '' },
     ],
@@ -334,7 +403,7 @@ export function serializeResumeForCompare(state) {
     summary: trim(state?.summary),
     skills: cleanList(state?.skills),
     certifications: cleanList(state?.certifications),
-    languages: cleanList(state?.languages),
+    languages: cleanLanguages(state?.languages),
     experience,
     education,
     projects,
@@ -381,8 +450,8 @@ function mapRow(row) {
       ? row.certifications
       : [''],
     languages: Array.isArray(row.languages) && row.languages.length
-      ? row.languages
-      : [''],
+      ? normalizeLanguages(row.languages)
+      : [createEmptyLanguage()],
     projects: Array.isArray(row.projects) && row.projects.length
       ? row.projects
       : createEmptyResume().projects,
@@ -428,7 +497,7 @@ function mapStateToRow(state) {
       }))
       .filter((item) => item.school || item.degree),
     certifications: cleanList(state.certifications),
-    languages: cleanList(state.languages),
+    languages: cleanLanguages(state.languages),
     projects: (Array.isArray(state.projects) ? state.projects : [])
       .map((item) => ({
         id: item.id || Date.now(),

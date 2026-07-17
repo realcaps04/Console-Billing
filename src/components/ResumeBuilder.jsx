@@ -4,6 +4,8 @@ import ResumePreview from './ResumePreview'
 import DeleteConfirmModal from './DeleteConfirmModal'
 import {
   createEmptyResume,
+  createEmptyLanguage,
+  normalizeLanguages,
   deleteResume,
   fetchResumes,
   getResumeValidationErrors,
@@ -37,7 +39,7 @@ function normalizeResume(resume) {
     ...resume,
     skills: resume.skills?.length ? resume.skills : [''],
     certifications: resume.certifications?.length ? resume.certifications : [''],
-    languages: resume.languages?.length ? resume.languages : [''],
+    languages: normalizeLanguages(resume.languages),
     experience: resume.experience?.length
       ? resume.experience.map((item) => ({
         ...empty.experience[0],
@@ -234,6 +236,27 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
       ...prev,
       [key]: (prev[key] || []).map((item) => (item.id === id ? { ...item, ...patch } : item)),
     }))
+  }
+
+  const addLanguage = () => {
+    setState((prev) => ({
+      ...prev,
+      languages: [...(prev.languages || []), createEmptyLanguage()],
+    }))
+  }
+
+  const updateLanguage = (id, patch) => {
+    setState((prev) => ({
+      ...prev,
+      languages: (prev.languages || []).map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    }))
+  }
+
+  const removeLanguage = (id) => {
+    setState((prev) => {
+      const next = (prev.languages || []).filter((item) => item.id !== id)
+      return { ...prev, languages: next.length ? next : [createEmptyLanguage()] }
+    })
   }
 
   const addExperience = () => {
@@ -1035,20 +1058,61 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
                   <h3>Languages <span className="resume-req">*</span></h3>
                 </div>
                 {sectionErr('languages') && <p className="field-error">{sectionErr('languages')}</p>}
-                {state.languages.map((item, index) => (
-                  <div key={`lang-${index}`} className={`resume-inline-row${listErr('languages', index) ? ' has-error' : ''}`}>
-                    <input
-                      value={item}
-                      onChange={(e) => updateListItem('languages', index, e.target.value)}
-                      onBlur={(e) => updateListItem('languages', index, e.target.value.trim())}
-                      placeholder="Language"
-                      aria-label={`Language ${index + 1}`}
-                    />
-                    <button type="button" className="btn-remove resume-entry-remove" onClick={() => removeListItem('languages', index)}>Remove</button>
-                    {listErr('languages', index) && <span className="field-error resume-inline-error">{listErr('languages', index)}</span>}
-                  </div>
-                ))}
-                <button type="button" className="btn-add-item resume-add-below" onClick={() => addListItem('languages')}>＋ Add language</button>
+                {state.languages.map((item, index) => {
+                  const langErr = entryErr('languages', index, 'name') || entryErr('languages', index, 'skills')
+                    ? {
+                      name: entryErr('languages', index, 'name'),
+                      skills: entryErr('languages', index, 'skills'),
+                    }
+                    : null
+                  return (
+                    <div key={item.id} className="resume-entry-card resume-language-card">
+                      <div className="resume-form-grid">
+                        <Field label="Language" full required error={langErr?.name}>
+                          <input
+                            value={item.name}
+                            onChange={(e) => updateLanguage(item.id, { name: e.target.value })}
+                            onBlur={(e) => updateLanguage(item.id, { name: e.target.value.trim() })}
+                            placeholder="e.g. English"
+                            aria-label={`Language ${index + 1}`}
+                          />
+                        </Field>
+                        <div className={`resume-language-skills full${langErr?.skills ? ' has-error' : ''}`}>
+                          <span className="resume-date-mode-label">Proficiency</span>
+                          <div className="resume-language-skill-options" role="group" aria-label={`Proficiency for ${item.name || 'language'}`}>
+                            <label className="resume-check resume-language-skill">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(item.read)}
+                                onChange={(e) => updateLanguage(item.id, { read: e.target.checked })}
+                              />
+                              Read
+                            </label>
+                            <label className="resume-check resume-language-skill">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(item.write)}
+                                onChange={(e) => updateLanguage(item.id, { write: e.target.checked })}
+                              />
+                              Write
+                            </label>
+                            <label className="resume-check resume-language-skill">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(item.speak)}
+                                onChange={(e) => updateLanguage(item.id, { speak: e.target.checked })}
+                              />
+                              Speak
+                            </label>
+                          </div>
+                          {langErr?.skills && <span className="field-error">{langErr.skills}</span>}
+                        </div>
+                      </div>
+                      <button type="button" className="btn-remove resume-entry-remove" onClick={() => removeLanguage(item.id)}>Remove</button>
+                    </div>
+                  )
+                })}
+                <button type="button" className="btn-add-item resume-add-below" onClick={addLanguage}>＋ Add language</button>
               </div>
             </div>
           </aside>

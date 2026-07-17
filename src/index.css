@@ -3303,6 +3303,32 @@ body {
   font-size: 0.75rem;
 }
 
+.resume-language-skills {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.resume-language-skills.has-error .resume-language-skill-options {
+  border-color: #f87171;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.12);
+}
+
+.resume-language-skill-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+}
+
+.resume-language-skill {
+  grid-column: auto;
+  margin: 0;
+}
+
 .resume-preview-panel {
   overflow: auto;
   background: #e8edf3;

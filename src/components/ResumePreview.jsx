@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import { getResumeDeclaration } from '../lib/resumes'
+import { getResumeDeclaration, formatExperienceDateRange } from '../lib/resumes'
 
 function Section({ title, children }) {
   if (!children) return null
@@ -69,7 +69,7 @@ const ResumePreview = forwardRef(function ResumePreview({ state }, ref) {
                           <p className="resume-entry-org">{item.company || 'Company'}</p>
                         </div>
                         <p className="resume-entry-dates">
-                          {[item.startDate, item.current ? 'Present' : item.endDate].filter(Boolean).join(' – ')}
+                          {formatExperienceDateRange(item)}
                         </p>
                       </div>
                       {item.details && (

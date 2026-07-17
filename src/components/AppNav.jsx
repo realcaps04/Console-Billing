@@ -5,7 +5,10 @@ export default function AppNav({
   onDownload,
   showDownload = false,
   showBillingNav = true,
+  resumeActions = null,
 }) {
+  const showResumeActions = Boolean(resumeActions)
+
   return (
     <header className="app-nav">
       <button
@@ -86,6 +89,51 @@ export default function AppNav({
             <span className="app-nav-btn-label">Services</span>
           </button>
         </nav>
+      ) : showResumeActions ? (
+        <div className="app-nav-resume-actions" role="toolbar" aria-label="Resume actions">
+          {resumeActions.mode === 'builder' ? (
+            <>
+              <button
+                type="button"
+                className="app-nav-resume-btn app-nav-resume-primary"
+                onClick={resumeActions.onSave}
+                disabled={resumeActions.saving}
+              >
+                {resumeActions.saving ? 'Saving…' : resumeActions.saveLabel}
+              </button>
+              <button
+                type="button"
+                className="app-nav-resume-btn"
+                onClick={resumeActions.onViewPdf}
+                disabled={resumeActions.busyAction === 'view'}
+              >
+                {resumeActions.busyAction === 'view' ? 'Opening…' : 'View PDF'}
+              </button>
+              <button
+                type="button"
+                className="app-nav-resume-btn"
+                onClick={resumeActions.onDownload}
+                disabled={resumeActions.busyAction === 'download'}
+              >
+                {resumeActions.busyAction === 'download' ? 'Generating…' : 'Download PDF'}
+              </button>
+              <button type="button" className="app-nav-resume-btn" onClick={resumeActions.onNew}>
+                New
+              </button>
+              <button type="button" className="app-nav-resume-btn" onClick={resumeActions.onSaved}>
+                Saved
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="app-nav-resume-btn app-nav-resume-primary"
+              onClick={resumeActions.onNew}
+            >
+              New Resume
+            </button>
+          )}
+        </div>
       ) : (
         <div className="app-nav-center-spacer" aria-hidden="true" />
       )}

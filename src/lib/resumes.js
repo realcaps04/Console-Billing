@@ -83,6 +83,38 @@ function getYearError(value, { required = false, label = 'Year' } = {}) {
   return ''
 }
 
+function getExactDateError(value, { required = false, label = 'Date' } = {}) {
+  const v = trim(value)
+  if (!v) return required ? `${label} is required.` : ''
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return 'Enter a valid date.'
+  const d = new Date(`${v}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return 'Enter a valid date.'
+  return ''
+}
+
+export function getExperienceDateMode(item) {
+  return item?.dateMode === 'exact' ? 'exact' : 'year'
+}
+
+export function formatExperienceDate(value, mode = 'year') {
+  const v = trim(value)
+  if (!v) return ''
+  if (mode === 'exact' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const d = new Date(`${v}T00:00:00`)
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+    }
+  }
+  return v
+}
+
+export function formatExperienceDateRange(item) {
+  const mode = getExperienceDateMode(item)
+  const start = formatExperienceDate(item?.startDate, mode)
+  const end = item?.current ? 'Present' : formatExperienceDate(item?.endDate, mode)
+  return [start, end].filter(Boolean).join(' – ')
+}
+
 function entryHasContent(item, keys) {
   return keys.some((key) => trim(item?.[key]))
 }
@@ -140,14 +172,26 @@ export function getResumeValidationErrors(state) {
   experience.forEach((item) => {
     const touched = entryHasContent(item, ['company', 'role', 'startDate', 'endDate', 'details']) || filledExperience.length === 0
     if (!touched && filledExperience.length) return
+    const dateMode = getExperienceDateMode(item)
     const row = {
       company: getRequiredError(item.company, 'Company'),
       role: getRequiredError(item.role, 'Role'),
-      startDate: getYearError(item.startDate, { required: true, label: 'Start year' }),
+      startDate: dateMode === 'exact'
+        ? getExactDateError(item.startDate, { required: true, label: 'Start date' })
+        : getYearError(item.startDate, { required: true, label: 'Start year' }),
       endDate: item.current
         ? ''
-        : getYearError(item.endDate, { required: true, label: 'End year' }),
+        : dateMode === 'exact'
+          ? getExactDateError(item.endDate, { required: true, label: 'End date' })
+          : getYearError(item.endDate, { required: true, label: 'End year' }),
       details: getRequiredError(item.details, 'Details'),
+    }
+    if (dateMode === 'exact' && !item.current) {
+      const start = trim(item.startDate)
+      const end = trim(item.endDate)
+      if (start && end && /^\d{4}-\d{2}-\d{2}$/.test(start) && /^\d{4}-\d{2}-\d{2}$/.test(end) && start > end) {
+        row.endDate = 'End date must be on or after start date.'
+      }
     }
     if (Object.values(row).some(Boolean)) errors.experience[item.id] = row
   })
@@ -238,7 +282,7 @@ export function createEmptyResume() {
     summary: '',
     skills: [''],
     experience: [
-      { id: Date.now(), company: '', role: '', startDate: '', endDate: '', current: false, details: '' },
+      { id: Date.now(), company: '', role: '', dateMode: 'year', startDate: '', endDate: '', current: false, details: '' },
     ],
     education: [
       { id: Date.now() + 1, school: '', degree: '', year: '', details: '' },
@@ -321,6 +365,7 @@ function mapStateToRow(state) {
         id: item.id || Date.now(),
         company: String(item.company || '').trim(),
         role: String(item.role || '').trim(),
+        dateMode: getExperienceDateMode(item),
         startDate: String(item.startDate || '').trim(),
         endDate: item.current ? '' : String(item.endDate || '').trim(),
         current: Boolean(item.current),

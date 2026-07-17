@@ -220,6 +220,7 @@ function parseExperienceBlocks(lines) {
       startDate: years[0] || '',
       endDate: currentRole ? '' : years[1] || years[0] || '',
       current: currentRole,
+      dateMode: 'year',
       details,
     }
   })

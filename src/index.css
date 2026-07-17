@@ -127,8 +127,56 @@ body {
   justify-self: end;
 }
 
+.app-nav-resume-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  justify-self: center;
+  max-width: 100%;
+}
+
+.app-nav-resume-btn {
+  height: 34px;
+  padding: 0 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.app-nav-resume-btn:hover:not(:disabled) {
+  background: #fff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.app-nav-resume-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.app-nav-resume-primary {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
+.app-nav-resume-primary:hover:not(:disabled) {
+  background: #1e40af;
+  border-color: #1e40af;
+  color: #fff;
+}
+
 .app-nav-links,
-.app-nav-center-spacer {
+.app-nav-center-spacer,
+.app-nav-resume-actions {
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -979,11 +1027,14 @@ body {
     height: 34px;
     padding: 0;
   }
-  .app-nav-download {
-    width: 34px !important;
-    height: 34px !important;
-    padding: 0 !important;
-    min-width: 34px;
+  .app-nav-resume-actions {
+    gap: 0.25rem;
+    max-width: 100%;
+  }
+  .app-nav-resume-btn {
+    height: 32px;
+    padding: 0 0.45rem;
+    font-size: 0.68rem;
   }
   .bills-header,
   .bills-toolbar {
@@ -3148,6 +3199,58 @@ body {
   font-family: 'Inter', sans-serif;
   color: var(--text2);
   grid-column: 1 / -1;
+}
+
+.resume-date-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.resume-date-mode.full {
+  grid-column: 1 / -1;
+}
+
+.resume-date-mode-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text2);
+  font-family: 'Inter', sans-serif;
+}
+
+.resume-date-mode-options {
+  display: inline-flex;
+  align-self: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface2);
+}
+
+.resume-date-mode-btn {
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.resume-date-mode-btn + .resume-date-mode-btn {
+  border-left: 1px solid var(--border);
+}
+
+.resume-date-mode-btn.active {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.resume-date-mode-btn:hover:not(.active) {
+  background: #fff;
+  color: var(--text);
 }
 
 .resume-inline-row {

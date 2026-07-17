@@ -150,6 +150,7 @@ export default function App() {
   const [state, setState] = useState(createDefaultState)
   const [downloading, setDownloading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [resumeHeaderActions, setResumeHeaderActions] = useState(null)
   const [previousBills, setPreviousBills] = useState([])
   const [billsLoading, setBillsLoading] = useState(false)
   const [billsError, setBillsError] = useState(null)
@@ -431,6 +432,7 @@ export default function App() {
         onDownload={downloadPDF}
         showDownload={view === 'create' || view === 'estimate'}
         showBillingNav={view !== 'home' && view !== 'resume'}
+        resumeActions={view === 'resume' ? resumeHeaderActions : null}
       />
 
       {view === 'home' ? (
@@ -441,7 +443,7 @@ export default function App() {
           }}
         />
       ) : view === 'resume' ? (
-        <ResumeBuilder />
+        <ResumeBuilder onHeaderActions={setResumeHeaderActions} />
       ) : view === 'create' || view === 'estimate' ? (
         <div className="app-layout">
           <FormPanel

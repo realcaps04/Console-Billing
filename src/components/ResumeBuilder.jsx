@@ -10,6 +10,7 @@ import {
   hasResumeValidationErrors,
   RESUME_CATEGORIES,
   saveResume,
+  getExperienceDateMode,
 } from '../lib/resumes'
 import { downloadResumePdf, viewResumePdf } from '../lib/pdf'
 import { parseResumePdfFile } from '../lib/parseResumePdf'
@@ -36,7 +37,13 @@ function normalizeResume(resume) {
     skills: resume.skills?.length ? resume.skills : [''],
     certifications: resume.certifications?.length ? resume.certifications : [''],
     languages: resume.languages?.length ? resume.languages : [''],
-    experience: resume.experience?.length ? resume.experience : empty.experience,
+    experience: resume.experience?.length
+      ? resume.experience.map((item) => ({
+        ...empty.experience[0],
+        ...item,
+        dateMode: item.dateMode === 'exact' ? 'exact' : 'year',
+      }))
+      : empty.experience,
     education: resume.education?.length ? resume.education : empty.education,
     projects: resume.projects?.length ? resume.projects : empty.projects,
   }
@@ -90,7 +97,7 @@ function IconDelete() {
   )
 }
 
-export default function ResumeBuilder() {
+export default function ResumeBuilder({ onHeaderActions }) {
   const previewRef = useRef(null)
   const libraryPdfRef = useRef(null)
   const uploadInputRef = useRef(null)
@@ -198,7 +205,7 @@ export default function ResumeBuilder() {
       ...prev,
       experience: [
         ...prev.experience,
-        { id: Date.now(), company: '', role: '', startDate: '', endDate: '', current: false, details: '' },
+        { id: Date.now(), company: '', role: '', dateMode: 'year', startDate: '', endDate: '', current: false, details: '' },
       ],
     }))
   }
@@ -332,6 +339,34 @@ export default function ResumeBuilder() {
       setBusyAction('')
     }
   }
+
+  const headerHandlersRef = useRef({})
+
+  useEffect(() => {
+    headerHandlersRef.current = {
+      onSave,
+      onViewPdf,
+      onDownload,
+      onNew: () => openBuilder(),
+      onSaved: () => setPage('library'),
+    }
+  })
+
+  useEffect(() => {
+    if (!onHeaderActions) return undefined
+    onHeaderActions({
+      mode: page === 'builder' ? 'builder' : 'library',
+      saveLabel: state.id ? 'Update Resume' : 'Create Resume',
+      saving,
+      busyAction,
+      onSave: () => headerHandlersRef.current.onSave?.(),
+      onViewPdf: () => headerHandlersRef.current.onViewPdf?.(),
+      onDownload: () => headerHandlersRef.current.onDownload?.(),
+      onNew: () => headerHandlersRef.current.onNew?.(),
+      onSaved: () => headerHandlersRef.current.onSaved?.(),
+    })
+    return () => onHeaderActions(null)
+  }, [onHeaderActions, page, state.id, saving, busyAction])
 
   const runLibraryPdf = async (resume, mode) => {
     setBusyResumeId(`${resume.id}:${mode}`)
@@ -617,24 +652,6 @@ export default function ResumeBuilder() {
         <div className="resume-layout">
           <aside className="resume-sidebar">
             <div className="resume-sidebar-body">
-              <div className="resume-toolbar">
-                <button type="button" className="bills-primary-btn" onClick={onSave} disabled={saving}>
-                  {saving ? 'Saving…' : state.id ? 'Update Resume' : 'Create Resume'}
-                </button>
-                <button type="button" className="bills-secondary-btn" onClick={onViewPdf} disabled={busyAction === 'view'}>
-                  {busyAction === 'view' ? 'Opening…' : 'View PDF'}
-                </button>
-                <button type="button" className="bills-secondary-btn" onClick={onDownload} disabled={busyAction === 'download'}>
-                  {busyAction === 'download' ? 'Generating…' : 'Download PDF'}
-                </button>
-                <button type="button" className="bills-refresh-btn" onClick={onReset}>
-                  New
-                </button>
-                <button type="button" className="bills-refresh-btn" onClick={() => setPage('library')}>
-                  Saved
-                </button>
-              </div>
-
               {notice && <p className="resume-notice">{notice}</p>}
               {error && <p className="resume-error">{error}</p>}
               {showErrors && hasFieldErrors && (
@@ -782,7 +799,9 @@ export default function ResumeBuilder() {
                   <button type="button" className="btn-add-item" onClick={addExperience}>＋ Add</button>
                 </div>
                 {sectionErr('experience') && <p className="field-error">{sectionErr('experience')}</p>}
-                {state.experience.map((item) => (
+                {state.experience.map((item) => {
+                  const dateMode = getExperienceDateMode(item)
+                  return (
                   <div key={item.id} className="resume-entry-card">
                     <div className="resume-form-grid">
                       <Field label="Company" required error={entryErr('experience', item.id, 'company')}>
@@ -791,18 +810,69 @@ export default function ResumeBuilder() {
                       <Field label="Role" required error={entryErr('experience', item.id, 'role')}>
                         <input value={item.role} onChange={(e) => updateEntry('experience', item.id, { role: e.target.value })} />
                       </Field>
-                      <Field label="Start" required error={entryErr('experience', item.id, 'startDate')}>
-                        <input value={item.startDate} onChange={(e) => updateEntry('experience', item.id, { startDate: e.target.value })} placeholder="YYYY" inputMode="numeric" maxLength={4} />
+                      <div className="resume-date-mode full">
+                        <span className="resume-date-mode-label">Duration format</span>
+                        <div className="resume-date-mode-options" role="group" aria-label="Experience date format">
+                          <button
+                            type="button"
+                            className={`resume-date-mode-btn${dateMode === 'year' ? ' active' : ''}`}
+                            onClick={() => updateEntry('experience', item.id, { dateMode: 'year', startDate: '', endDate: '' })}
+                          >
+                            Year
+                          </button>
+                          <button
+                            type="button"
+                            className={`resume-date-mode-btn${dateMode === 'exact' ? ' active' : ''}`}
+                            onClick={() => updateEntry('experience', item.id, { dateMode: 'exact', startDate: '', endDate: '' })}
+                          >
+                            Exact dates
+                          </button>
+                        </div>
+                      </div>
+                      <Field
+                        label={dateMode === 'exact' ? 'Start date' : 'Start year'}
+                        required
+                        error={entryErr('experience', item.id, 'startDate')}
+                      >
+                        {dateMode === 'exact' ? (
+                          <input
+                            type="date"
+                            value={item.startDate}
+                            onChange={(e) => updateEntry('experience', item.id, { startDate: e.target.value })}
+                          />
+                        ) : (
+                          <input
+                            value={item.startDate}
+                            onChange={(e) => updateEntry('experience', item.id, { startDate: e.target.value })}
+                            placeholder="YYYY"
+                            inputMode="numeric"
+                            maxLength={4}
+                          />
+                        )}
                       </Field>
-                      <Field label="End" required={!item.current} error={entryErr('experience', item.id, 'endDate')}>
-                        <input
-                          value={item.endDate}
-                          disabled={item.current}
-                          onChange={(e) => updateEntry('experience', item.id, { endDate: e.target.value })}
-                          placeholder="YYYY"
-                          inputMode="numeric"
-                          maxLength={4}
-                        />
+                      <Field
+                        label={dateMode === 'exact' ? 'End date' : 'End year'}
+                        required={!item.current}
+                        error={entryErr('experience', item.id, 'endDate')}
+                      >
+                        {dateMode === 'exact' ? (
+                          <input
+                            type="date"
+                            value={item.endDate}
+                            disabled={item.current}
+                            min={item.startDate || undefined}
+                            onChange={(e) => updateEntry('experience', item.id, { endDate: e.target.value })}
+                          />
+                        ) : (
+                          <input
+                            value={item.endDate}
+                            disabled={item.current}
+                            onChange={(e) => updateEntry('experience', item.id, { endDate: e.target.value })}
+                            placeholder="YYYY"
+                            inputMode="numeric"
+                            maxLength={4}
+                          />
+                        )}
                       </Field>
                       <label className="resume-check">
                         <input
@@ -823,7 +893,8 @@ export default function ResumeBuilder() {
                     </div>
                     <button type="button" className="btn-remove resume-entry-remove" onClick={() => removeEntry('experience', item.id)}>Remove</button>
                   </div>
-                ))}
+                  )
+                })}
               </div>
 
               <div className="resume-form-section">

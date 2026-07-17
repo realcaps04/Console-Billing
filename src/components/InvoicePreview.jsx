@@ -73,6 +73,14 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
               aria-hidden="true"
             />
           )}
+          {!estimate && status === 'partially_paid' && (
+            <img
+              className="inv3-partial-watermark"
+              src="/partial-payment-stamp.png"
+              alt=""
+              aria-hidden="true"
+            />
+          )}
           <div className="inv3">
             <div className="inv3-title">{docTitle}</div>
 

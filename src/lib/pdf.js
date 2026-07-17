@@ -2,7 +2,7 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { sanitizeInvoiceNumber, generateInvoiceNumber } from '../utils'
 
-export async function downloadInvoicePdf(element, invoiceState) {
+async function buildInvoicePdf(element, invoiceState) {
   if (!element) throw new Error('Invoice preview is not ready.')
 
   const canvas = await html2canvas(element, {
@@ -36,5 +36,40 @@ export async function downloadInvoicePdf(element, invoiceState) {
   const safeInvoice =
     sanitizeInvoiceNumber(invoiceState?.invoiceNumber) ||
     generateInvoiceNumber(invoiceState?.issueDate)
-  pdf.save(`ConsoleProjects_${safeInvoice}.pdf`)
+
+  return { pdf, filename: `ConsoleProjects_${safeInvoice}.pdf` }
+}
+
+export async function downloadInvoicePdf(element, invoiceState) {
+  const { pdf, filename } = await buildInvoicePdf(element, invoiceState)
+  pdf.save(filename)
+}
+
+/** Open the generated PDF in a new browser tab (view only). */
+export async function viewInvoicePdf(element, invoiceState) {
+  const { pdf } = await buildInvoicePdf(element, invoiceState)
+  const blob = pdf.output('blob')
+  const url = URL.createObjectURL(blob)
+
+  // Do not pass "noopener" in the features string — many browsers then return null
+  // even when the tab opens successfully, which caused a false "popup blocked" alert.
+  const opened = window.open(url, '_blank')
+  if (opened) {
+    try {
+      opened.opener = null
+    } catch {
+      // ignore
+    }
+  } else {
+    // Fallback if the window reference is unavailable
+    const link = document.createElement('a')
+    link.href = url
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  }
+
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }

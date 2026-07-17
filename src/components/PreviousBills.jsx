@@ -55,6 +55,15 @@ function matchesFilters(bill, { query, typeFilter, statusFilter }) {
   return true
 }
 
+function IconView() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
 function IconEdit() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -104,6 +113,7 @@ export default function PreviousBills({
   onEditBill,
   onDeleteBill,
   onDownloadBill,
+  onViewBill,
   onMarkPaidPdf,
   busyBillId = null,
   autoLoad = false,
@@ -380,6 +390,16 @@ export default function PreviousBills({
                       </td>
                       <td className="bills-col-actions bills-actions-cell">
                         <div className="bills-row-actions">
+                          <button
+                            type="button"
+                            className="bills-action-btn bills-action-view"
+                            onClick={() => onViewBill?.(bill)}
+                            disabled={busy}
+                            title="View PDF"
+                            aria-label="View PDF"
+                          >
+                            <IconView />
+                          </button>
                           <button
                             type="button"
                             className="bills-action-btn bills-action-edit"

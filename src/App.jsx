@@ -9,7 +9,7 @@ import ServicesManager from './components/ServicesManager'
 import HomePage from './components/HomePage'
 import { hasContactValidationErrors, generateInvoiceNumber, generateEstimateNumber, computeTotalsWithDiscount, withDerivedPaymentFields } from './utils'
 import { fetchInvoices, saveInvoice, deleteInvoice } from './lib/invoices'
-import { downloadInvoicePdf } from './lib/pdf'
+import { downloadInvoicePdf, viewInvoicePdf } from './lib/pdf'
 
 const VIEW_STORAGE_KEY = 'consolebilling_active_view'
 
@@ -146,18 +146,25 @@ export default function App() {
   const previewRef = useRef(null)
   const exportPreviewRef = useRef(null)
   const exportWaitersRef = useRef([])
+  const exportModeRef = useRef('download')
 
   useEffect(() => {
     if (!exportState) return undefined
     const id = window.setTimeout(async () => {
       const waiters = exportWaitersRef.current
       exportWaitersRef.current = []
+      const mode = exportModeRef.current || 'download'
       try {
-        await downloadInvoicePdf(exportPreviewRef.current, exportState)
+        if (mode === 'view') {
+          await viewInvoicePdf(exportPreviewRef.current, exportState)
+        } else {
+          await downloadInvoicePdf(exportPreviewRef.current, exportState)
+        }
         waiters.forEach(({ resolve }) => resolve())
       } catch (e) {
         waiters.forEach(({ reject }) => reject(e))
       } finally {
+        exportModeRef.current = 'download'
         setExportState(null)
       }
     }, 450)
@@ -294,12 +301,30 @@ export default function App() {
     setBusyBillId(rowId)
     try {
       await new Promise((resolve, reject) => {
+        exportModeRef.current = 'download'
         exportWaitersRef.current.push({ resolve, reject })
         setExportState(billToState(bill))
       })
     } catch (e) {
       console.error(e)
       alert('PDF generation error: ' + (e?.message || e))
+    } finally {
+      setBusyBillId(null)
+    }
+  }, [])
+
+  const viewBillPdf = useCallback(async (bill) => {
+    const rowId = bill.id || bill.invoiceNumber
+    setBusyBillId(rowId)
+    try {
+      await new Promise((resolve, reject) => {
+        exportModeRef.current = 'view'
+        exportWaitersRef.current.push({ resolve, reject })
+        setExportState(billToState(bill))
+      })
+    } catch (e) {
+      console.error(e)
+      alert('PDF view error: ' + (e?.message || e))
     } finally {
       setBusyBillId(null)
     }
@@ -319,6 +344,7 @@ export default function App() {
         )
       }
       await new Promise((resolve, reject) => {
+        exportModeRef.current = 'download'
         exportWaitersRef.current.push({ resolve, reject })
         setExportState(paidState)
       })
@@ -418,6 +444,7 @@ export default function App() {
           onEditBill={openBill}
           onDeleteBill={requestDeleteBill}
           onDownloadBill={downloadBillPdf}
+          onViewBill={viewBillPdf}
           onMarkPaidPdf={markPaidAndDownload}
           busyBillId={busyBillId}
           autoLoad

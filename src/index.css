@@ -707,13 +707,13 @@ body {
   vertical-align: middle;
 }
 
-.bills-col-invoice { width: 18%; max-width: 0; }
-.bills-col-client { width: 16%; }
-.bills-col-details { width: 14%; max-width: 0; }
-.bills-col-total { width: 11%; }
-.bills-col-balance { width: 11%; }
+.bills-col-invoice { width: 16%; max-width: 0; }
+.bills-col-client { width: 14%; }
+.bills-col-details { width: 13%; max-width: 0; }
+.bills-col-total { width: 10%; }
+.bills-col-balance { width: 10%; }
 .bills-col-status { width: 10%; }
-.bills-col-actions { width: 14%; }
+.bills-col-actions { width: 18%; }
 
 .bills-table .bills-col-invoice,
 .bills-table .bills-col-details {
@@ -735,6 +735,7 @@ body {
 .bills-table .bills-col-actions {
   text-align: right;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .bills-table tbody tr:nth-child(even) {
@@ -823,8 +824,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.4rem;
-  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .bills-action-btn {
@@ -858,6 +860,16 @@ body {
 
 .bills-action-edit:hover:not(:disabled) {
   background: #dbeafe;
+}
+
+.bills-action-view {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.bills-action-view:hover:not(:disabled) {
+  background: #e0e7ff;
 }
 
 .bills-action-download {
@@ -990,7 +1002,7 @@ body {
     overflow-x: auto;
   }
   .bills-table {
-    min-width: 1040px;
+    min-width: 1120px;
   }
 }
 
@@ -2086,6 +2098,19 @@ body {
   pointer-events: none;
   mix-blend-mode: multiply;
   filter: sepia(0.15) saturate(1.4) hue-rotate(330deg);
+}
+
+.inv3-partial-watermark {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  z-index: 3;
+  width: 58%;
+  max-width: 440px;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  opacity: 0.22;
+  pointer-events: none;
+  mix-blend-mode: multiply;
 }
 
 .inv3-block {

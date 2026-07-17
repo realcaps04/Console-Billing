@@ -2,12 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import ResumePreview from './ResumePreview'
 import DeleteConfirmModal from './DeleteConfirmModal'
+import PasswordUnlockModal from './PasswordUnlockModal'
+import SetResumePasswordModal from './SetResumePasswordModal'
 import {
   createEmptyResume,
   createEmptyLanguage,
   normalizeLanguages,
   deleteResume,
   fetchResumes,
+  getResumeEditPassword,
   getResumeValidationErrors,
   hasResumeValidationErrors,
   RESUME_CATEGORIES,
@@ -49,6 +52,7 @@ function normalizeResume(resume) {
       : empty.experience,
     education: resume.education?.length ? resume.education : empty.education,
     projects: resume.projects?.length ? resume.projects : empty.projects,
+    editPassword: getResumeEditPassword(resume),
   }
 }
 
@@ -57,6 +61,36 @@ function formatUpdated(iso) {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+/** Partially mask sensitive list values (keep a short prefix, hide the rest). */
+function maskSensitive(value, { keep = 2, minStars = 4, maxStars = 10 } = {}) {
+  const text = String(value || '').trim()
+  if (!text) return '—'
+  const prefix = text.slice(0, Math.min(keep, text.length))
+  const hidden = Math.max(text.length - prefix.length, minStars)
+  const stars = '*'.repeat(Math.min(hidden, maxStars))
+  return `${prefix}${stars}`
+}
+
+function maskEmail(value) {
+  const text = String(value || '').trim()
+  if (!text) return '—'
+  const at = text.indexOf('@')
+  if (at <= 0) return maskSensitive(text, { keep: 2 })
+  const local = text.slice(0, at)
+  const domain = text.slice(at + 1)
+  const localPrefix = local.slice(0, Math.min(2, local.length))
+  const localStars = '*'.repeat(Math.min(Math.max(local.length - localPrefix.length, 3), 8))
+  const dot = domain.lastIndexOf('.')
+  if (dot > 0) {
+    const domainName = domain.slice(0, dot)
+    const tld = domain.slice(dot)
+    const domainPrefix = domainName.slice(0, Math.min(1, domainName.length))
+    const domainStars = '*'.repeat(Math.min(Math.max(domainName.length - domainPrefix.length, 3), 8))
+    return `${localPrefix}${localStars}@${domainPrefix}${domainStars}${tld}`
+  }
+  return `${localPrefix}${localStars}@${maskSensitive(domain, { keep: 1, minStars: 3, maxStars: 8 })}`
 }
 
 function IconView() {
@@ -123,6 +157,8 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
   const [importFileName, setImportFileName] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteConfirming, setDeleteConfirming] = useState(false)
+  const [editUnlockTarget, setEditUnlockTarget] = useState(null)
+  const [setPasswordOpen, setSetPasswordOpen] = useState(false)
 
   const isDirty = useMemo(
     () => page === 'builder' && serializeResumeForCompare(state) !== savedBaseline,
@@ -296,8 +332,8 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
     })
   }
 
-  const onReset = () => {
-    const empty = createEmptyResume()
+  const onReset = (editPassword = '') => {
+    const empty = { ...createEmptyResume(), editPassword: String(editPassword || '').trim() }
     setState(empty)
     markClean(empty)
     setNotice('')
@@ -307,7 +343,7 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
     if (uploadInputRef.current) uploadInputRef.current.value = ''
   }
 
-  const openBuilder = (resume = null) => {
+  const openBuilder = (resume = null, { editPassword } = {}) => {
     if (resume) {
       const next = normalizeResume(resume)
       setState(next)
@@ -315,17 +351,31 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
       setNotice(`Editing ${resume.fullName || 'resume'}`)
       setImportFileName('')
     } else {
-      if (page === 'builder' && !confirmDiscardChanges()) return
-      onReset()
+      onReset(editPassword)
+      setNotice('New resume — password saved for future edits.')
     }
     setError('')
     setShowErrors(false)
     setPage('builder')
   }
 
-  const openBuilderFromList = (resume) => {
+  const requestNewResume = () => {
+    if (page === 'builder' && !confirmDiscardChanges()) return
+    setSetPasswordOpen(true)
+  }
+
+  const requestEditResume = (resume) => {
+    if (!resume?.id) {
+      requestNewResume()
+      return
+    }
     if (page === 'builder' && isDirty && !confirmDiscardChanges()) return
-    openBuilder(resume)
+    setEditUnlockTarget(resume)
+  }
+
+  const openBuilderFromList = (resume) => {
+    if (resume?.id) requestEditResume(resume)
+    else requestNewResume()
   }
 
   const onImportPdf = async (file) => {
@@ -335,7 +385,12 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
     setNotice('')
     try {
       const parsed = await parseResumePdfFile(file, { category: state.category || 'IT' })
-      setState(normalizeResume({ ...parsed, id: null, category: state.category || parsed.category || 'IT' }))
+      setState(normalizeResume({
+        ...parsed,
+        id: null,
+        category: state.category || parsed.category || 'IT',
+        editPassword: state.editPassword,
+      }))
       setShowErrors(false)
       setImportFileName(file.name)
       setNotice('PDF imported. Review and edit the autofilled fields, then save.')
@@ -419,8 +474,7 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
       onViewPdf,
       onDownload,
       onNew: () => {
-        if (page === 'builder' && !confirmDiscardChanges()) return
-        openBuilder()
+        requestNewResume()
       },
       onSaved: goToLibrary,
     }
@@ -497,7 +551,11 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
           className={`resume-subnav-btn${page === 'builder' ? ' active' : ''}`}
           onClick={() => {
             if (page === 'builder') return
-            openBuilder(state.id ? state : null)
+            if (state.id || state.editPassword) {
+              setPage('builder')
+              return
+            }
+            requestNewResume()
           }}
         >
           {state.id ? 'Edit Resume' : 'Create Resume'}
@@ -650,20 +708,20 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
                         <tr key={row.id}>
                           <td>
                             <button type="button" className="resume-name-link" onClick={() => openBuilderFromList(row)}>
-                              {row.fullName || 'Untitled'}
+                              {maskSensitive(row.fullName || 'Untitled', { keep: 3 })}
                             </button>
                           </td>
                           <td>
                             <span className="resume-category-pill">{row.category || '—'}</span>
                           </td>
                           <td>
-                            <span className="bills-row-detail" title={row.headline || ''}>
-                              {row.headline || '—'}
+                            <span className="bills-row-detail">
+                              {maskSensitive(row.headline, { keep: 4, minStars: 5, maxStars: 12 })}
                             </span>
                           </td>
                           <td>
-                            <span className="bills-row-detail" title={row.email || ''}>
-                              {row.email || '—'}
+                            <span className="bills-row-detail">
+                              {maskEmail(row.email)}
                             </span>
                           </td>
                           <td>
@@ -740,8 +798,8 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
 
                 <div className="resume-import-box">
                   <div className="resume-import-copy">
-                    <strong>Upload existing resume PDF</strong>
-                    <p>We extract name, contact, skills, and sections to autofill the form. You can edit everything after import.</p>
+                    <strong>Import from PDF</strong>
+                    <p>Upload a resume to autofill this form. Review and adjust before saving.</p>
                     {importFileName && <span className="resume-import-file">Imported: {importFileName}</span>}
                   </div>
                   <div className="resume-import-actions">
@@ -763,7 +821,7 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
                       disabled={importingPdf}
                       onClick={() => uploadInputRef.current?.click()}
                     >
-                      {importingPdf ? 'Reading PDF…' : 'Choose PDF'}
+                      {importingPdf ? 'Importing…' : 'Upload PDF'}
                     </button>
                   </div>
                 </div>
@@ -1139,6 +1197,34 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
           setDeleteTarget(null)
         }}
         onConfirm={confirmDelete}
+      />
+
+      <PasswordUnlockModal
+        key={editUnlockTarget?.id || 'resume-edit-unlock'}
+        open={Boolean(editUnlockTarget)}
+        title="Unlock resume for editing"
+        message={`Enter the edit password for ${editUnlockTarget?.fullName || 'this resume'}.`}
+        confirmLabel="Edit resume"
+        expectedPassword={getResumeEditPassword(editUnlockTarget)}
+        onCancel={() => setEditUnlockTarget(null)}
+        onConfirm={() => {
+          const target = editUnlockTarget
+          setEditUnlockTarget(null)
+          if (target) openBuilder(target)
+        }}
+      />
+
+      <SetResumePasswordModal
+        key={setPasswordOpen ? 'set-password-open' : 'set-password-closed'}
+        open={setPasswordOpen}
+        title="Set edit password"
+        message="Choose a password for this new resume. You will need the same password later to edit it."
+        confirmLabel="Start resume"
+        onCancel={() => setSetPasswordOpen(false)}
+        onConfirm={(password) => {
+          setSetPasswordOpen(false)
+          openBuilder(null, { editPassword: password })
+        }}
       />
     </div>
   )

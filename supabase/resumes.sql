@@ -18,9 +18,14 @@ create table if not exists public.resumes (
   certifications jsonb default '[]'::jsonb,
   languages jsonb default '[]'::jsonb,
   projects jsonb default '[]'::jsonb,
+  edit_password text not null default '3455',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- If the table already exists, add the edit password column (safe to re-run):
+alter table public.resumes
+  add column if not exists edit_password text not null default '3455';
 
 create index if not exists resumes_category_idx on public.resumes (category);
 create index if not exists resumes_created_at_idx on public.resumes (created_at desc);

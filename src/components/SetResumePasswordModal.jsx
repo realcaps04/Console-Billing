@@ -1,18 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 
-export const APP_ACCESS_PASSWORD = '3455'
-
-export default function PasswordUnlockModal({
+export default function SetResumePasswordModal({
   open,
-  title = 'Enter password',
-  message = 'Enter password to continue.',
+  title = 'Set edit password',
+  message = 'Choose a password for this resume. You will need it later to edit the resume.',
   confirmLabel = 'Continue',
-  confirming = false,
-  expectedPassword = APP_ACCESS_PASSWORD,
   onCancel,
   onConfirm,
 }) {
   const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const inputRef = useRef(null)
 
@@ -26,12 +23,17 @@ export default function PasswordUnlockModal({
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (password !== String(expectedPassword ?? '')) {
-      setError('Incorrect password.')
+    const next = String(password || '').trim()
+    if (next.length < 4) {
+      setError('Password must be at least 4 characters.')
+      return
+    }
+    if (next !== String(confirm || '').trim()) {
+      setError('Passwords do not match.')
       return
     }
     setError('')
-    onConfirm?.(password)
+    onConfirm?.(next)
   }
 
   return (
@@ -40,10 +42,10 @@ export default function PasswordUnlockModal({
         className="app-modal delete-confirm-modal"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="unlock-modal-title"
+        aria-labelledby="set-resume-password-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="unlock-modal-title" className="app-modal-title">{title}</h3>
+        <h3 id="set-resume-password-title" className="app-modal-title">{title}</h3>
         <p className="app-modal-message">{message}</p>
         <form className="delete-confirm-form" onSubmit={handleSubmit}>
           <input
@@ -55,9 +57,20 @@ export default function PasswordUnlockModal({
               setPassword(e.target.value)
               if (error) setError('')
             }}
-            placeholder="Password"
-            autoComplete="off"
-            disabled={confirming}
+            placeholder="New password"
+            autoComplete="new-password"
+          />
+          <input
+            type="password"
+            className={`delete-confirm-input${error ? ' has-error' : ''}`}
+            value={confirm}
+            onChange={(e) => {
+              setConfirm(e.target.value)
+              if (error) setError('')
+            }}
+            placeholder="Confirm password"
+            autoComplete="new-password"
+            style={{ marginTop: '0.65rem' }}
           />
           {error ? <p className="delete-confirm-error">{error}</p> : null}
           <div className="delete-confirm-actions">
@@ -65,16 +78,15 @@ export default function PasswordUnlockModal({
               type="button"
               className="app-modal-btn app-modal-btn-secondary"
               onClick={onCancel}
-              disabled={confirming}
             >
               Cancel
             </button>
             <button
               type="submit"
               className="app-modal-btn"
-              disabled={confirming || !password}
+              disabled={!password || !confirm}
             >
-              {confirming ? 'Opening…' : confirmLabel}
+              {confirmLabel}
             </button>
           </div>
         </form>

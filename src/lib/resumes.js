@@ -337,6 +337,14 @@ export function hasResumeValidationErrors(errors) {
   return false
 }
 
+/** Fallback edit password for resumes created before per-resume passwords existed. */
+export const DEFAULT_RESUME_EDIT_PASSWORD = '3455'
+
+export function getResumeEditPassword(resume) {
+  const value = String(resume?.editPassword ?? '').trim()
+  return value || DEFAULT_RESUME_EDIT_PASSWORD
+}
+
 export function createEmptyResume() {
   return {
     id: null,
@@ -361,6 +369,7 @@ export function createEmptyResume() {
     projects: [
       { id: Date.now() + 2, name: '', link: '', details: '' },
     ],
+    editPassword: '',
   }
 }
 
@@ -407,6 +416,7 @@ export function serializeResumeForCompare(state) {
     experience,
     education,
     projects,
+    editPassword: trim(state?.editPassword),
   })
 }
 
@@ -455,6 +465,7 @@ function mapRow(row) {
     projects: Array.isArray(row.projects) && row.projects.length
       ? row.projects
       : createEmptyResume().projects,
+    editPassword: String(row.edit_password || '').trim() || DEFAULT_RESUME_EDIT_PASSWORD,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -463,6 +474,9 @@ function mapRow(row) {
 function mapStateToRow(state) {
   const fullName = String(state.fullName || '').trim()
   if (!fullName) throw new Error('Full name is required.')
+
+  const editPassword = String(state.editPassword || '').trim()
+  if (!editPassword) throw new Error('Edit password is required. Start a new resume to set one.')
 
   return {
     full_name: fullName,
@@ -506,6 +520,7 @@ function mapStateToRow(state) {
         details: String(item.details || '').trim(),
       }))
       .filter((item) => item.name || item.details),
+    edit_password: editPassword,
     updated_at: new Date().toISOString(),
   }
 }

@@ -11,46 +11,7 @@ import ResumeBuilder from './components/ResumeBuilder'
 import { hasContactValidationErrors, generateInvoiceNumber, generateEstimateNumber, computeTotalsWithDiscount, withDerivedPaymentFields } from './utils'
 import { fetchInvoices, saveInvoice, deleteInvoice } from './lib/invoices'
 import { downloadInvoicePdf, viewInvoicePdf } from './lib/pdf'
-
-const VIEW_STORAGE_KEY = 'consolebilling_active_view'
-
-function getInitialView() {
-  const hash = window.location.hash.replace('#', '')
-  if (
-    hash === 'home' ||
-    hash === 'create' ||
-    hash === 'estimate' ||
-    hash === 'bills' ||
-    hash === 'services' ||
-    hash === 'resume'
-  ) return hash
-  try {
-    const stored = sessionStorage.getItem(VIEW_STORAGE_KEY)
-    if (
-      stored === 'home' ||
-      stored === 'create' ||
-      stored === 'estimate' ||
-      stored === 'bills' ||
-      stored === 'services' ||
-      stored === 'resume'
-    ) return stored
-  } catch {
-    // ignore
-  }
-  return 'home'
-}
-
-function persistView(nextView) {
-  try {
-    sessionStorage.setItem(VIEW_STORAGE_KEY, nextView)
-  } catch {
-    // ignore
-  }
-  const nextHash = `#${nextView}`
-  if (window.location.hash !== nextHash) {
-    window.history.replaceState(null, '', nextHash)
-  }
-}
+import { getInitialView, persistView } from './lib/appRoute'
 
 const today = new Date().toISOString().split('T')[0]
 const due = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
@@ -208,14 +169,17 @@ export default function App() {
     }
   }, [])
 
+  useEffect(() => {
+    if (view === 'bills') loadBills()
+  }, [view, loadBills])
+
   const navigate = useCallback((nextView) => {
     if (view === 'resume' && nextView !== 'resume' && resumeHasUnsaved) {
       if (!window.confirm('You have unsaved resume changes. Leave without saving?')) return
     }
     setView(nextView)
     persistView(nextView)
-    if (nextView === 'bills') loadBills()
-  }, [loadBills, view, resumeHasUnsaved])
+  }, [view, resumeHasUnsaved])
 
   const update = useCallback((key, value) => {
     setState((prev) => {

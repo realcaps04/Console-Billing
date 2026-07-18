@@ -20,6 +20,7 @@ import {
 import { downloadResumePdf, viewResumePdf } from '../lib/pdf'
 import { parseResumePdfFile } from '../lib/parseResumePdf'
 import { formatIndianPhone } from '../utils'
+import { getInitialResumePage, persistResumePage } from '../lib/appRoute'
 
 function Field({ label, children, full, error, required }) {
   return (
@@ -137,7 +138,7 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
   const previewRef = useRef(null)
   const libraryPdfRef = useRef(null)
   const uploadInputRef = useRef(null)
-  const [page, setPage] = useState('library')
+  const [page, setPage] = useState(getInitialResumePage)
   const [state, setState] = useState(createEmptyResume)
   const [savedBaseline, setSavedBaseline] = useState(() => serializeResumeForCompare(createEmptyResume()))
   const [savedResumes, setSavedResumes] = useState([])
@@ -186,6 +187,10 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [isDirty])
+
+  useEffect(() => {
+    persistResumePage(page)
+  }, [page])
 
   const goToLibrary = useCallback(() => {
     if (!confirmDiscardChanges()) return

@@ -43,6 +43,92 @@ export function getResumeDeclaration(category) {
   return RESUME_DECLARATIONS[key] || RESUME_DECLARATIONS.Other
 }
 
+/** Language choices for the resume form — South → North India, then other common languages. */
+export const RESUME_LANGUAGE_GROUPS = [
+  {
+    label: 'South India',
+    options: [
+      'Malayalam',
+      'Tamil',
+      'Telugu',
+      'Kannada',
+      'Tulu',
+      'Konkani',
+      'Kodava',
+    ],
+  },
+  {
+    label: 'West & Central India',
+    options: [
+      'Marathi',
+      'Gujarati',
+      'Konkani (Goa)',
+      'Hindi',
+      'Urdu',
+    ],
+  },
+  {
+    label: 'North India',
+    options: [
+      'Punjabi',
+      'Haryanvi',
+      'Dogri',
+      'Kashmiri',
+      'Rajasthani',
+      'Garhwali',
+      'Kumaoni',
+    ],
+  },
+  {
+    label: 'East & Northeast India',
+    options: [
+      'Bengali',
+      'Odia',
+      'Assamese',
+      'Maithili',
+      'Bhojpuri',
+      'Manipuri (Meitei)',
+      'Nepali',
+      'Bodo',
+      'Khasi',
+      'Mizo',
+      'Nagamese',
+    ],
+  },
+  {
+    label: 'Other languages',
+    options: [
+      'English',
+      'Sanskrit',
+      'Arabic',
+      'Persian',
+      'French',
+      'German',
+      'Spanish',
+      'Portuguese',
+      'Chinese',
+      'Japanese',
+      'Korean',
+      'Russian',
+      'Italian',
+      'Dutch',
+      'Turkish',
+      'Thai',
+      'Vietnamese',
+      'Indonesian',
+      'Swahili',
+    ],
+  },
+]
+
+export const RESUME_LANGUAGES = RESUME_LANGUAGE_GROUPS.flatMap((group) => group.options)
+
+export function isKnownResumeLanguage(name) {
+  const value = String(name || '').trim().toLowerCase()
+  if (!value) return false
+  return RESUME_LANGUAGES.some((lang) => lang.toLowerCase() === value)
+}
+
 function trim(value) {
   return String(value ?? '').trim()
 }
@@ -126,22 +212,33 @@ export function createEmptyLanguage(partial = {}) {
     read: Boolean(partial.read),
     write: Boolean(partial.write),
     speak: Boolean(partial.speak),
+    useOther: Boolean(partial.useOther),
   }
 }
 
 export function normalizeLanguageItem(item, index = 0) {
   if (typeof item === 'string') {
-    return createEmptyLanguage({ id: Date.now() + index, name: item, read: true, write: true, speak: true })
+    const name = String(item || '').trim()
+    return createEmptyLanguage({
+      id: Date.now() + index,
+      name,
+      read: true,
+      write: true,
+      speak: true,
+      useOther: Boolean(name) && !isKnownResumeLanguage(name),
+    })
   }
   if (item && typeof item === 'object') {
     const hasAnyProficiency =
       item.read !== undefined || item.write !== undefined || item.speak !== undefined
+    const name = String(item.name || item.language || '').trim()
     return createEmptyLanguage({
       id: item.id || Date.now() + index,
-      name: item.name || item.language || '',
+      name,
       read: hasAnyProficiency ? Boolean(item.read) : true,
       write: hasAnyProficiency ? Boolean(item.write) : true,
       speak: hasAnyProficiency ? Boolean(item.speak) : true,
+      useOther: Boolean(item.useOther) || (Boolean(name) && !isKnownResumeLanguage(name)),
     })
   }
   return createEmptyLanguage({ id: Date.now() + index })

@@ -3445,6 +3445,18 @@ body {
   gap: 0.35rem;
 }
 
+.resume-language-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.resume-language-pick select,
+.resume-language-pick input {
+  width: 100%;
+}
+
 .resume-language-skills.has-error .resume-language-skill-options {
   border-color: #f87171;
   box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.12);

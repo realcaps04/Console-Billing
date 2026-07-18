@@ -13,6 +13,8 @@ import {
   getResumeValidationErrors,
   hasResumeValidationErrors,
   RESUME_CATEGORIES,
+  RESUME_LANGUAGE_GROUPS,
+  isKnownResumeLanguage,
   saveResume,
   getExperienceDateMode,
   serializeResumeForCompare,
@@ -1165,13 +1167,48 @@ export default function ResumeBuilder({ onHeaderActions, onUnsavedChanges }) {
                     <div key={item.id} className="resume-entry-card resume-language-card">
                       <div className="resume-form-grid">
                         <Field label="Language" full required error={langErr?.name}>
-                          <input
-                            value={item.name}
-                            onChange={(e) => updateLanguage(item.id, { name: e.target.value })}
-                            onBlur={(e) => updateLanguage(item.id, { name: e.target.value.trim() })}
-                            placeholder="e.g. English"
-                            aria-label={`Language ${index + 1}`}
-                          />
+                          <div className="resume-language-pick">
+                            <select
+                              value={
+                                isKnownResumeLanguage(item.name)
+                                  ? item.name
+                                  : (item.useOther || (item.name && !isKnownResumeLanguage(item.name))
+                                    ? '__other__'
+                                    : '')
+                              }
+                              onChange={(e) => {
+                                const next = e.target.value
+                                if (next === '__other__') {
+                                  updateLanguage(item.id, {
+                                    name: isKnownResumeLanguage(item.name) ? '' : item.name,
+                                    useOther: true,
+                                  })
+                                  return
+                                }
+                                updateLanguage(item.id, { name: next, useOther: false })
+                              }}
+                              aria-label={`Language ${index + 1}`}
+                            >
+                              <option value="">Select language</option>
+                              {RESUME_LANGUAGE_GROUPS.map((group) => (
+                                <optgroup key={group.label} label={group.label}>
+                                  {group.options.map((lang) => (
+                                    <option key={lang} value={lang}>{lang}</option>
+                                  ))}
+                                </optgroup>
+                              ))}
+                              <option value="__other__">Other…</option>
+                            </select>
+                            {(item.useOther || (item.name && !isKnownResumeLanguage(item.name))) && (
+                              <input
+                                value={item.name}
+                                onChange={(e) => updateLanguage(item.id, { name: e.target.value, useOther: true })}
+                                onBlur={(e) => updateLanguage(item.id, { name: e.target.value.trim(), useOther: true })}
+                                placeholder="Type language name"
+                                aria-label={`Custom language ${index + 1}`}
+                              />
+                            )}
+                          </div>
                         </Field>
                         <div className={`resume-language-skills full${langErr?.skills ? ' has-error' : ''}`}>
                           <span className="resume-date-mode-label">Proficiency</span>

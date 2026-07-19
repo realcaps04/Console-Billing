@@ -81,6 +81,14 @@ const InvoicePreview = forwardRef(function InvoicePreview({ state }, ref) {
               aria-hidden="true"
             />
           )}
+          {!estimate && status === 'unpaid' && (
+            <img
+              className="inv3-unpaid-watermark"
+              src="/unpaid-stamp.png"
+              alt=""
+              aria-hidden="true"
+            />
+          )}
           {estimate && (
             <img
               className="inv3-estimate-watermark"

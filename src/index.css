@@ -2172,6 +2172,19 @@ body {
   mix-blend-mode: multiply;
 }
 
+.inv3-unpaid-watermark {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  z-index: 3;
+  width: 56%;
+  max-width: 420px;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  opacity: 0.22;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
 .inv3-estimate-watermark {
   position: absolute;
   top: 42%;

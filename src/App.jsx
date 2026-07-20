@@ -8,6 +8,7 @@ import PreviousBills from './components/PreviousBills'
 import ServicesManager from './components/ServicesManager'
 import HomePage from './components/HomePage'
 import ResumeBuilder from './components/ResumeBuilder'
+import LoanDocuments from './components/LoanDocuments'
 import { hasContactValidationErrors, generateInvoiceNumber, generateEstimateNumber, computeTotalsWithDiscount, withDerivedPaymentFields } from './utils'
 import { fetchInvoices, saveInvoice, deleteInvoice } from './lib/invoices'
 import { downloadInvoicePdf, viewInvoicePdf } from './lib/pdf'
@@ -113,6 +114,8 @@ export default function App() {
   const [saving, setSaving] = useState(false)
   const [resumeHeaderActions, setResumeHeaderActions] = useState(null)
   const [resumeHasUnsaved, setResumeHasUnsaved] = useState(false)
+  const [documentsHeaderActions, setDocumentsHeaderActions] = useState(null)
+  const [documentsHasUnsaved, setDocumentsHasUnsaved] = useState(false)
   const [previousBills, setPreviousBills] = useState([])
   const [billsLoading, setBillsLoading] = useState(false)
   const [billsError, setBillsError] = useState(null)
@@ -177,9 +180,12 @@ export default function App() {
     if (view === 'resume' && nextView !== 'resume' && resumeHasUnsaved) {
       if (!window.confirm('You have unsaved resume changes. Leave without saving?')) return
     }
+    if (view === 'documents' && nextView !== 'documents' && documentsHasUnsaved) {
+      if (!window.confirm('You have unsaved document changes. Leave without saving?')) return
+    }
     setView(nextView)
     persistView(nextView)
-  }, [view, resumeHasUnsaved])
+  }, [view, resumeHasUnsaved, documentsHasUnsaved])
 
   const update = useCallback((key, value) => {
     setState((prev) => {
@@ -399,8 +405,9 @@ export default function App() {
         downloading={downloading}
         onDownload={downloadPDF}
         showDownload={view === 'create' || view === 'estimate'}
-        showBillingNav={view !== 'home' && view !== 'resume'}
+        showBillingNav={view !== 'home' && view !== 'resume' && view !== 'documents'}
         resumeActions={view === 'resume' ? resumeHeaderActions : null}
+        documentsActions={view === 'documents' ? documentsHeaderActions : null}
       />
 
       {view === 'home' ? (
@@ -408,12 +415,18 @@ export default function App() {
           onOpenModule={(moduleId) => {
             if (moduleId === 'billing') startNewInvoice()
             else if (moduleId === 'resume') navigate('resume')
+            else if (moduleId === 'documents') navigate('documents')
           }}
         />
       ) : view === 'resume' ? (
         <ResumeBuilder
           onHeaderActions={setResumeHeaderActions}
           onUnsavedChanges={setResumeHasUnsaved}
+        />
+      ) : view === 'documents' ? (
+        <LoanDocuments
+          onHeaderActions={setDocumentsHeaderActions}
+          onUnsavedChanges={setDocumentsHasUnsaved}
         />
       ) : view === 'create' || view === 'estimate' ? (
         <div className="app-layout">

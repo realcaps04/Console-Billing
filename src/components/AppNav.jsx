@@ -6,8 +6,10 @@ export default function AppNav({
   showDownload = false,
   showBillingNav = true,
   resumeActions = null,
+  documentsActions = null,
 }) {
   const showResumeActions = Boolean(resumeActions)
+  const showDocumentsActions = Boolean(documentsActions)
 
   return (
     <header className="app-nav">
@@ -22,7 +24,13 @@ export default function AppNav({
         <div>
           <div className="app-nav-name">Console Projects</div>
           <div className="app-nav-sub">
-            {showBillingNav ? 'Billing' : activeView === 'resume' ? 'Resume' : 'Workspace'}
+            {showBillingNav
+              ? 'Billing'
+              : activeView === 'resume'
+                ? 'Resume'
+                : activeView === 'documents'
+                  ? 'Documents'
+                  : 'Workspace'}
           </div>
         </div>
       </button>
@@ -131,6 +139,40 @@ export default function AppNav({
               onClick={resumeActions.onNew}
             >
               New Resume
+            </button>
+          )}
+        </div>
+      ) : showDocumentsActions ? (
+        <div className="app-nav-resume-actions" role="toolbar" aria-label="Documents actions">
+          {documentsActions.mode === 'editor' ? (
+            <>
+              <button type="button" className="app-nav-resume-btn" onClick={documentsActions.onNew}>
+                New customer
+              </button>
+              <button type="button" className="app-nav-resume-btn" onClick={documentsActions.onBack}>
+                Customers
+              </button>
+            </>
+          ) : documentsActions.mode === 'customers' ? (
+            <>
+              <button
+                type="button"
+                className="app-nav-resume-btn app-nav-resume-primary"
+                onClick={documentsActions.onNew}
+              >
+                Add customer
+              </button>
+              <button type="button" className="app-nav-resume-btn" onClick={documentsActions.onBack}>
+                Loan types
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="app-nav-resume-btn app-nav-resume-primary"
+              onClick={documentsActions.onNew}
+            >
+              New loan type
             </button>
           )}
         </div>

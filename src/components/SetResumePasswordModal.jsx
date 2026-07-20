@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import PasswordInput from './PasswordInput'
 
 export default function SetResumePasswordModal({
   open,
@@ -48,9 +49,8 @@ export default function SetResumePasswordModal({
         <h3 id="set-resume-password-title" className="app-modal-title">{title}</h3>
         <p className="app-modal-message">{message}</p>
         <form className="delete-confirm-form" onSubmit={handleSubmit}>
-          <input
+          <PasswordInput
             ref={inputRef}
-            type="password"
             className={`delete-confirm-input${error ? ' has-error' : ''}`}
             value={password}
             onChange={(e) => {
@@ -60,8 +60,8 @@ export default function SetResumePasswordModal({
             placeholder="New password"
             autoComplete="new-password"
           />
-          <input
-            type="password"
+          <PasswordInput
+            wrapClassName="password-input-spaced"
             className={`delete-confirm-input${error ? ' has-error' : ''}`}
             value={confirm}
             onChange={(e) => {
@@ -70,7 +70,6 @@ export default function SetResumePasswordModal({
             }}
             placeholder="Confirm password"
             autoComplete="new-password"
-            style={{ marginTop: '0.65rem' }}
           />
           {error ? <p className="delete-confirm-error">{error}</p> : null}
           <div className="delete-confirm-actions">

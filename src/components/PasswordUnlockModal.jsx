@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import PasswordInput from './PasswordInput'
 
 export const APP_ACCESS_PASSWORD = '3455'
 
@@ -46,9 +47,8 @@ export default function PasswordUnlockModal({
         <h3 id="unlock-modal-title" className="app-modal-title">{title}</h3>
         <p className="app-modal-message">{message}</p>
         <form className="delete-confirm-form" onSubmit={handleSubmit}>
-          <input
+          <PasswordInput
             ref={inputRef}
-            type="password"
             className={`delete-confirm-input${error ? ' has-error' : ''}`}
             value={password}
             onChange={(e) => {

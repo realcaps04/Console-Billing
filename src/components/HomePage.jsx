@@ -48,9 +48,10 @@ const MODULES = [
   {
     id: 'documents',
     title: 'Documents',
-    description: 'Proposals, contracts, and signed copies — organized and searchable.',
-    status: 'soon',
+    description: 'Create loan types, then add customers with KYC, bank details, and portal logins under each type.',
+    status: 'available',
     accent: 'documents',
+    requiresPassword: true,
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
         <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
@@ -160,7 +161,7 @@ export default function HomePage({ onOpenModule }) {
             <p className="home-kicker">Console Projects</p>
             <h1 className="home-title">Choose a workspace</h1>
             <p className="home-subtitle">
-              Select a module to get started. Billing and Resume Builder are live; additional tools will roll out here over time.
+              Select a module to get started. Billing, Resume Builder, and Documents are live; additional tools will roll out here over time.
             </p>
           </div>
           <dl className="home-stats">
